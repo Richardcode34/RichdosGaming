@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../graphics.css" />
+  <title>Voxel Builder</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #1f2f22; color: #eefced; font-family: Trebuchet MS, sans-serif; }
+    .shell { width: min(95vw, 900px); text-align: center; }
+    a { color: #b7ffd3; }
+    #grid { margin: 10px auto; width: min(92vw, 640px); display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; }
+    .tile { height: 54px; border: 1px solid rgba(220,255,230,.35); border-radius: 6px; background: #3c5a3d; cursor: pointer; font-weight: 700; color: #f2fff5; }
+    .tile.grass { background: #4f8c45; }
+    .tile.wood { background: #7d5a38; }
+    .tile.stone { background: #7d8794; }
+    .tile.water { background: #3f86b7; }
+    button, select { border: 1px solid #b7dfc4; border-radius: 8px; background: #355c40; color: #eefced; padding: 8px 10px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p><a href="../index.html">Home</a> | <a href="../page-4-arcade.html">P4 Arcade</a> | <a href="../page-5-realistic.html">P5 Realistic</a></p>
+    <h1>Voxel Builder</h1>
+    <p>Minecraft-like creative builder. Pick a block and click tiles.</p>
+    <p>
+      Level:
+      <select id="level">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      Block:
+      <select id="blockType">
+        <option value="grass">Grass</option>
+        <option value="wood">Wood</option>
+        <option value="stone">Stone</option>
+        <option value="water">Water</option>
+      </select>
+      <button id="newWorld" type="button">New World</button>
+    </p>
+    <div id="grid"></div>
+    <p id="hud"></p>
+  </div>
+
+  <script>
+    const grid = document.getElementById('grid');
+    const hud = document.getElementById('hud');
+    const levelSelect = document.getElementById('level');
+    const blockTypeSelect = document.getElementById('blockType');
+    const newWorldButton = document.getElementById('newWorld');
+
+    const levels = {
+      easy: { tiles: 60, target: 180 },
+      medium: { tiles: 80, target: 260 },
+      hard: { tiles: 100, target: 350 }
+    };
+
+    const points = { grass: 2, wood: 3, stone: 4, water: 2 };
+
+    let world = [];
+    let score = 0;
+
+    function cfg() { return levels[levelSelect.value] || levels.medium; }
+
+    function reset() {
+      world = Array.from({ length: cfg().tiles }, () => 'empty');
+      score = 0;
+      render();
+    }
+
+    function place(i) {
+      const type = blockTypeSelect.value;
+      if (!points[type]) return;
+      if (world[i] === type) return;
+      world[i] = type;
+      score += points[type];
+      render();
+    }
+
+    function render() {
+      grid.innerHTML = '';
+      world.forEach((t, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'tile' + (t === 'empty' ? '' : ' ' + t);
+        b.textContent = t === 'empty' ? '...' : t[0].toUpperCase();
+        b.addEventListener('click', () => place(i));
+        grid.appendChild(b);
+      });
+      const target = cfg().target;
+      hud.textContent = score >= target
+        ? `World complete (${levelSelect.value})! Score: ${score}`
+        : `Level: ${levelSelect.value} | Score: ${score}/${target} | Block: ${blockTypeSelect.value}`;
+    }
+
+    newWorldButton.addEventListener('click', reset);
+    levelSelect.addEventListener('change', reset);
+    blockTypeSelect.addEventListener('change', render);
+
+    reset();
+  </script>
+  <script src="../player-system.js"></script>
+  <script src="../music-system.js"></script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../graphics.css" />
+  <title>Quick Dodge</title>
+  <style>
+    body { margin: 0; display: grid; place-items: center; min-height: 100vh; font-family: Trebuchet MS, sans-serif; background: #0d1f33; color: #eef7ff; }
+    .shell { width: min(92vw, 700px); text-align: center; }
+    a { color: #99daff; }
+    canvas { width: 100%; max-width: 640px; border: 1px solid #7bb7d9; border-radius: 10px; background: linear-gradient(#0f2740, #0a1727); }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p><a href="../index.html">Home</a> | <a href="../page-1-shooting.html">P1 Shooting</a> | <a href="../page-2-racing.html">P2 Racing</a> | <a href="../page-3-puzzle.html">P3 Puzzle</a> | <a href="../page-4-arcade.html">P4 Arcade</a> | <a href="../page-5-realistic.html">P5 Realistic</a> | <a href="../page-6-party.html">P6 Party</a></p>
+    <h1>Quick Dodge</h1>
+    <p>Move with Left/Right arrows. Avoid falling blocks.</p>
+    <p>
+      Level:
+      <select id="level">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button id="newGame" type="button">New Game</button>
+    </p>
+    <canvas id="c" width="640" height="420"></canvas>
+    <p id="hud"></p>
+  </div>
+  <script>
+    const c = document.getElementById('c');
+    const x = c.getContext('2d');
+    const hud = document.getElementById('hud');
+    const p = { x: 300, y: 380, w: 40, h: 20, s: 6 };
+    const keys = { l: false, r: false };
+    const drops = [];
+    const levelSelect = document.getElementById('level');
+    const newGame = document.getElementById('newGame');
+    const levels = {
+      easy: { spawnEvery: 32, speedMin: 1.8, speedMax: 3.1 },
+      medium: { spawnEvery: 24, speedMin: 2.2, speedMax: 4.1 },
+      hard: { spawnEvery: 17, speedMin: 2.8, speedMax: 5.3 }
+    };
+    let score = 0;
+    let over = false;
+    let tick = 0;
+    let currentLevel = levels.medium;
+
+    addEventListener('keydown', e => { if (e.code === 'ArrowLeft') keys.l = true; if (e.code === 'ArrowRight') keys.r = true; if (e.code === 'KeyR' && over) reset(); });
+    addEventListener('keyup', e => { if (e.code === 'ArrowLeft') keys.l = false; if (e.code === 'ArrowRight') keys.r = false; });
+
+    function reset() {
+      drops.length = 0;
+      score = 0;
+      over = false;
+      tick = 0;
+      p.x = 300;
+      currentLevel = levels[levelSelect.value] || levels.medium;
+    }
+    function hit(a, b) { return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y; }
+
+    function loop() {
+      if (!over) {
+        if (keys.l) p.x -= p.s;
+        if (keys.r) p.x += p.s;
+        p.x = Math.max(0, Math.min(c.width - p.w, p.x));
+
+        tick++;
+        if (tick % currentLevel.spawnEvery === 0) {
+          drops.push({
+            x: Math.random() * (c.width - 20),
+            y: -20,
+            w: 20,
+            h: 20,
+            v: currentLevel.speedMin + Math.random() * (currentLevel.speedMax - currentLevel.speedMin)
+          });
+        }
+
+        for (let i = drops.length - 1; i >= 0; i--) {
+          drops[i].y += drops[i].v;
+          if (drops[i].y > c.height) { drops.splice(i, 1); score += 1; continue; }
+          if (hit(p, drops[i])) over = true;
+        }
+      }
+
+      x.clearRect(0, 0, c.width, c.height);
+      x.fillStyle = '#67d4a5';
+      x.fillRect(p.x, p.y, p.w, p.h);
+      x.fillStyle = '#ff8f8f';
+      for (const d of drops) x.fillRect(d.x, d.y, d.w, d.h);
+      hud.textContent = over
+        ? `Game Over (${levelSelect.value}). Score: ${score}. Press R or New Game.`
+        : `Level: ${levelSelect.value} | Score: ${score}`;
+      requestAnimationFrame(loop);
+    }
+    newGame.addEventListener('click', reset);
+    levelSelect.addEventListener('change', reset);
+    reset();
+    loop();
+  </script>
+  <script src="../player-system.js"></script>
+  <script src="../music-system.js"></script>
+</body>
+</html>
+
+
+
+
+

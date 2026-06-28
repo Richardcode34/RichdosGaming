@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../graphics.css" />
+  <title>Memory Flip</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: Trebuchet MS, sans-serif; background: #0e2035; color: #eef7ff; }
+    .shell { width: min(94vw, 780px); text-align: center; }
+    a { color: #9ed8ff; }
+    .toolbar { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; }
+    select, button { border: 1px solid #8dc0df; border-radius: 8px; background: #1a3b5d; color: #eef9ff; padding: 7px 10px; }
+    .grid { margin: 12px auto; width: min(94vw, 640px); display: grid; gap: 8px; }
+    .card { border: 1px solid #86bfde; border-radius: 10px; height: 74px; background: #173655; cursor: pointer; display: grid; place-items: center; }
+    .card.open, .card.matched { background: #2f648f; }
+    .shape { width: 34px; height: 34px; display: inline-block; }
+    .shape-circle { border-radius: 999px; background: #ffd36f; }
+    .shape-square { background: #78ffd5; }
+    .shape-triangle { width: 0; height: 0; border-left: 18px solid transparent; border-right: 18px solid transparent; border-bottom: 34px solid #ff9aa2; }
+    .shape-diamond { transform: rotate(45deg); background: #b0b6ff; }
+    .shape-star { position: relative; background: transparent; }
+    .shape-star::before, .shape-star::after { content: ""; position: absolute; left: 14px; top: 0; width: 6px; height: 34px; background: #ffef88; }
+    .shape-star::before { transform: rotate(45deg); }
+    .shape-star::after { transform: rotate(-45deg); }
+    .shape-plus { position: relative; background: transparent; }
+    .shape-plus::before, .shape-plus::after { content: ""; position: absolute; background: #98f7ff; }
+    .shape-plus::before { width: 10px; height: 34px; left: 12px; top: 0; }
+    .shape-plus::after { width: 34px; height: 10px; left: 0; top: 12px; }
+    .shape-hex { width: 34px; height: 20px; background: #ffb38b; position: relative; margin-top: 7px; }
+    .shape-hex::before, .shape-hex::after { content: ""; position: absolute; width: 0; border-left: 17px solid transparent; border-right: 17px solid transparent; left: 0; }
+    .shape-hex::before { bottom: 100%; border-bottom: 10px solid #ffb38b; }
+    .shape-hex::after { top: 100%; border-top: 10px solid #ffb38b; }
+    .shape-ring { border-radius: 999px; border: 6px solid #d0c2ff; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p><a href="../index.html">Home</a> | <a href="../page-1-shooting.html">P1 Shooting</a> | <a href="../page-2-racing.html">P2 Racing</a> | <a href="../page-3-puzzle.html">P3 Puzzle</a> | <a href="../page-4-arcade.html">P4 Arcade</a> | <a href="../page-5-realistic.html">P5 Realistic</a> | <a href="../page-6-party.html">P6 Party</a></p>
+    <h1>Memory Flip</h1>
+    <p>Find all matching shape pairs.</p>
+    <div class="toolbar">
+      <label for="level">Level</label>
+      <select id="level">
+        <option value="easy">Easy (3x4)</option>
+        <option value="medium" selected>Medium (4x4)</option>
+        <option value="hard">Hard (4x5)</option>
+      </select>
+      <button id="newGame" type="button">New Game</button>
+    </div>
+    <div id="grid" class="grid"></div>
+    <p id="info"></p>
+  </div>
+  <script>
+    const shapePool = [
+      'circle','square','triangle','diamond','star','plus','hex','ring','circle','square'
+    ];
+    const levels = {
+      easy: { pairs: 6, cols: 4 },
+      medium: { pairs: 8, cols: 4 },
+      hard: { pairs: 10, cols: 5 }
+    };
+    const grid = document.getElementById('grid');
+    const info = document.getElementById('info');
+    const levelSelect = document.getElementById('level');
+    const newGameButton = document.getElementById('newGame');
+    let cards = [];
+    let open = [];
+    let moves = 0;
+    let lock = false;
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function start() {
+      const level = levels[levelSelect.value] || levels.medium;
+      const selectedShapes = shapePool.slice(0, level.pairs);
+      const symbols = shuffle([...selectedShapes, ...selectedShapes]);
+      cards = symbols.map((s, i) => ({ id: i, s, open: false, matched: false }));
+      grid.style.gridTemplateColumns = `repeat(${level.cols}, 1fr)`;
+      open = [];
+      moves = 0;
+      lock = false;
+      render();
+    }
+
+    function pick(id) {
+      const c = cards[id];
+      if (lock || c.open || c.matched || open.length === 2) return;
+      c.open = true;
+      open.push(c);
+      if (open.length === 2) {
+        moves += 1;
+        if (open[0].s === open[1].s) {
+          open[0].matched = true;
+          open[1].matched = true;
+          open = [];
+        } else {
+          lock = true;
+          setTimeout(() => {
+            open[0].open = false;
+            open[1].open = false;
+            open = [];
+            lock = false;
+            render();
+          }, 600);
+        }
+      }
+      render();
+    }
+
+    function render() {
+      grid.innerHTML = '';
+      for (const c of cards) {
+        const b = document.createElement('button');
+        b.className = `card${c.open ? ' open' : ''}${c.matched ? ' matched' : ''}`;
+        if (c.open || c.matched) {
+          const shape = document.createElement('span');
+          shape.className = `shape shape-${c.s}`;
+          b.appendChild(shape);
+        } else {
+          b.textContent = '?';
+        }
+        b.onclick = () => pick(c.id);
+        grid.appendChild(b);
+      }
+      const done = cards.every(c => c.matched);
+      info.textContent = done ? `Complete in ${moves} moves. Choose level and press New Game.` : `Moves: ${moves}`;
+    }
+
+    newGameButton.addEventListener('click', start);
+    levelSelect.addEventListener('change', start);
+
+    start();
+  </script>
+  <script src="../player-system.js"></script>
+  <script src="../music-system.js"></script>
+</body>
+</html>
+
+
+
+
+

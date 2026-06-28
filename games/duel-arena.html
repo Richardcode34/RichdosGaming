@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../graphics.css" />
+  <title>Duel Arena</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #121a24; color: #eef7ff; font-family: Trebuchet MS, sans-serif; }
+    .shell { width: min(94vw, 900px); text-align: center; }
+    a { color: #9ed8ff; }
+    canvas { width: 100%; max-width: 860px; border: 1px solid #8fbde0; border-radius: 10px; background: linear-gradient(#1f3042, #13202d); }
+    button { border: 1px solid #97c6e4; border-radius: 8px; background: #275074; color: #eef9ff; padding: 8px 12px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p><a href="../index.html">Home</a> | <a href="../page-6-party.html">Page 6: Party</a></p>
+    <h1>Duel Arena (2 Players)</h1>
+    <p>P1: A/D move, W shoot. P2: Left/Right move, Up shoot.</p>
+    <p><button id="restart" type="button">Restart Match</button></p>
+    <canvas id="c" width="860" height="460"></canvas>
+    <p id="hud"></p>
+  </div>
+  <script>
+    const c = document.getElementById('c');
+    const g = c.getContext('2d');
+    const hud = document.getElementById('hud');
+    const restartButton = document.getElementById('restart');
+
+    const keys = {};
+    const bullets = [];
+    const p1 = { x: 120, y: 390, w: 40, h: 22, hp: 5, cd: 0, color: '#67d8ff' };
+    const p2 = { x: 700, y: 390, w: 40, h: 22, hp: 5, cd: 0, color: '#ff9a8f' };
+    let over = false;
+
+    function reset() {
+      p1.x = 120; p2.x = 700;
+      p1.hp = 5; p2.hp = 5;
+      p1.cd = 0; p2.cd = 0;
+      bullets.length = 0;
+      over = false;
+    }
+
+    function overlap(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function update() {
+      if (over) return;
+
+      if (keys['KeyA']) p1.x -= 4;
+      if (keys['KeyD']) p1.x += 4;
+      if (keys['ArrowLeft']) p2.x -= 4;
+      if (keys['ArrowRight']) p2.x += 4;
+      p1.x = Math.max(0, Math.min(c.width - p1.w, p1.x));
+      p2.x = Math.max(0, Math.min(c.width - p2.w, p2.x));
+
+      if (p1.cd > 0) p1.cd -= 1;
+      if (p2.cd > 0) p2.cd -= 1;
+
+      if (keys['KeyW'] && p1.cd <= 0) {
+        bullets.push({ x: p1.x + p1.w / 2 - 2, y: p1.y - 8, w: 4, h: 10, vy: -7, owner: 1 });
+        p1.cd = 12;
+      }
+      if (keys['ArrowUp'] && p2.cd <= 0) {
+        bullets.push({ x: p2.x + p2.w / 2 - 2, y: p2.y - 8, w: 4, h: 10, vy: -7, owner: 2 });
+        p2.cd = 12;
+      }
+
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        bullets[i].y += bullets[i].vy;
+        if (bullets[i].y < -20) {
+          bullets.splice(i, 1);
+          continue;
+        }
+        if (bullets[i].owner === 1 && overlap(bullets[i], p2)) {
+          p2.hp -= 1;
+          bullets.splice(i, 1);
+        } else if (bullets[i].owner === 2 && overlap(bullets[i], p1)) {
+          p1.hp -= 1;
+          bullets.splice(i, 1);
+        }
+      }
+
+      if (p1.hp <= 0 || p2.hp <= 0) over = true;
+    }
+
+    function draw() {
+      g.clearRect(0, 0, c.width, c.height);
+      g.fillStyle = '#243648';
+      g.fillRect(0, 420, c.width, 40);
+
+      g.fillStyle = p1.color;
+      g.fillRect(p1.x, p1.y, p1.w, p1.h);
+      g.fillStyle = p2.color;
+      g.fillRect(p2.x, p2.y, p2.w, p2.h);
+
+      g.fillStyle = '#ffe08a';
+      for (const b of bullets) g.fillRect(b.x, b.y, b.w, b.h);
+
+      if (over) {
+        const winner = p1.hp > p2.hp ? 'Player 1 Wins!' : p2.hp > p1.hp ? 'Player 2 Wins!' : 'Draw!';
+        hud.textContent = `${winner} Press Restart Match.`;
+      } else {
+        hud.textContent = `P1 HP: ${p1.hp} | P2 HP: ${p2.hp}`;
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'ArrowUp') e.preventDefault(); });
+    addEventListener('keyup', e => { keys[e.code] = false; if (e.code === 'ArrowUp') e.preventDefault(); });
+    restartButton.addEventListener('click', reset);
+
+    reset();
+    loop();
+  </script>
+  <script src="../player-system.js"></script>
+  <script src="../music-system.js"></script>
+</body>
+</html>
+
+
+
+
+

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="graphics.css" />
+  <title>Help Center - Richdos Gaming</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="hub">
+    <header class="hero">
+      <p class="brand">Richdos Gaming Website</p>
+      <h1>Help Center</h1>
+      <p class="tag">Helpers and above can assist players here.</p>
+    </header>
+
+    <section class="about">
+      <h2>Status</h2>
+      <p id="helpStatus">Checking helpers...</p>
+      <p>
+        <a href="index.html">Home</a> |
+        <a href="account.html">Account</a> |
+        <a href="ai-assistant.html">AI Assistant</a> |
+        <a href="updates.html">Updates</a>
+      </p>
+    </section>
+
+    <section class="about stack">
+      <article class="mini-card">
+        <h2>Request Help</h2>
+        <div class="glass-strip">
+          <input id="helpMessage" class="input" type="text" maxlength="300" placeholder="Describe what you need help with" />
+          <button id="helpSendBtn" class="btn" type="button">Send Help Request</button>
+        </div>
+        <p id="helpRequestStatus" class="status-line"></p>
+      </article>
+
+      <article class="mini-card">
+        <h2>Helpers Online</h2>
+        <p id="helperCount" class="meta">0 can help now</p>
+        <ul id="helperList" class="member-list"></ul>
+      </article>
+
+      <article class="mini-card" id="helperPanel" hidden>
+        <h2>Helper Panel (Helper+)</h2>
+        <div class="glass-strip">
+          <button id="toggleAvailBtn" class="btn" type="button">Set Available</button>
+          <button id="refreshTicketsBtn" class="btn" type="button">Refresh Tickets</button>
+        </div>
+        <div class="glass-strip">
+          <input id="helperReplyText" class="input" type="text" maxlength="240" placeholder="Quick helper answer used when closing ticket" />
+        </div>
+        <div class="glass-strip" id="scriptButtons">
+          <button class="btn" type="button" data-script="Join room from Account page, then open multiplayer game from Home.">MP Join</button>
+          <button class="btn" type="button" data-script="Buy crate in Shop, then open Inventory and click Open Crate.">Crate Help</button>
+          <button class="btn" type="button" data-script="Add friend first, then use trade panel and check total trade value before sending.">Trade Help</button>
+          <button class="btn" type="button" data-script="Locked games need streak, credits, points, or keys shown on lock text.">Locked Game</button>
+          <button class="btn" type="button" data-script="If account issue persists, share username and exact error in next ticket.">Account Issue</button>
+        </div>
+        <p id="helperPanelStatus" class="status-line"></p>
+        <ul id="ticketList" class="member-list"></ul>
+      </article>
+    </section>
+  </main>
+
+  <script src="player-system.js"></script>
+  <script>
+    function esc(s){return String(s||'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+    function helperRoleLabel(role){
+      const r=String(role||'').toLowerCase();
+      if(r==='owner') return 'Owner';
+      if(r==='admin') return 'Admin';
+      if(r==='helper') return 'Helper';
+      return 'Player';
+    }
+
+    async function renderHelpers() {
+      await RGW.syncCurrentAccountFromLan();
+      const snap = RGW.getHelpersSnapshot();
+      const count = Number(snap.availableCount) || 0;
+      document.getElementById('helpStatus').textContent = count > 0
+        ? `${count} helper(s) can help right now.`
+        : 'No helper is marked available right now. You can still submit a ticket.';
+      document.getElementById('helperCount').textContent = `${count} can help now`;
+      const list = document.getElementById('helperList');
+      const helpers = Array.isArray(snap.helpers) ? snap.helpers : [];
+      if (!helpers.length) {
+        list.innerHTML = '<li>No helper profiles found yet.</li>';
+      } else {
+        list.innerHTML = helpers.map(h => {
+          const state = h.online ? (h.available ? 'Online - Available' : 'Online - Busy') : 'Offline';
+          return `<li>${esc(h.username)} (${helperRoleLabel(h.role)}) - ${state}</li>`;
+        }).join('');
+      }
+    }
+
+    function renderTickets() {
+      const me = RGW.getCurrentUsername();
+      const helper = RGW.isHelperUser(me);
+      const panel = document.getElementById('helperPanel');
+      panel.hidden = !helper;
+      const tickets = RGW.getHelpTickets();
+      const list = document.getElementById('ticketList');
+      if (!tickets.length) {
+        list.innerHTML = '<li>No tickets yet.</li>';
+        return;
+      }
+      list.innerHTML = tickets.slice(0, 40).map(t => {
+        const status = t.status === 'closed' ? `Closed by ${esc(t.handledBy || 'helper')}` : 'Open';
+        const note = t.handledNote ? ` | reply: ${esc(t.handledNote)}` : '';
+        const closeBtn = helper && t.status !== 'closed'
+          ? `<button class="btn" data-close="${esc(t.id)}">Reply + Close</button>`
+          : '';
+        return `<li><strong>${esc(t.username)}</strong>: ${esc(t.message)} | ${status}${note} ${closeBtn}</li>`;
+      }).join('');
+
+      list.querySelectorAll('button[data-close]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-close');
+          const note = document.getElementById('helperReplyText').value.trim() || 'Handled in help center';
+          const result = RGW.closeHelpTicket(id, note);
+          document.getElementById('helperPanelStatus').textContent = result.message || '';
+          renderTickets();
+        });
+      });
+    }
+
+    document.getElementById('helpSendBtn').addEventListener('click', () => {
+      const msg = document.getElementById('helpMessage').value.trim();
+      const r = RGW.requestHelp(msg);
+      document.getElementById('helpRequestStatus').textContent = r.message || '';
+      if (r.ok) document.getElementById('helpMessage').value = '';
+      renderTickets();
+    });
+
+    document.getElementById('toggleAvailBtn').addEventListener('click', () => {
+      const me = RGW.getAccount();
+      const next = !(me && me.helpingAvailable);
+      const r = RGW.setHelpingAvailability(next);
+      document.getElementById('helperPanelStatus').textContent = r.message || '';
+      renderHelpers();
+      renderTickets();
+    });
+
+    document.getElementById('refreshTicketsBtn').addEventListener('click', () => {
+      renderHelpers();
+      renderTickets();
+    });
+
+    document.querySelectorAll('#scriptButtons button[data-script]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('helperReplyText').value = btn.getAttribute('data-script') || '';
+      });
+    });
+
+    renderHelpers();
+    renderTickets();
+  </script>
+  <script src="music-system.js"></script>
+</body>
+</html>

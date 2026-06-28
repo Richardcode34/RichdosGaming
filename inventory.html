@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="graphics.css" />
+  <title>Inventory - Richdos Gaming</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .crate-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(4,10,18,.75);z-index:99999}
+    .crate-overlay.show{display:flex}
+    .crate-box{width:min(420px,90vw);border-radius:14px;border:1px solid rgba(255,235,168,.55);background:linear-gradient(155deg,rgba(35,20,4,.97),rgba(12,8,3,.97));padding:18px;text-align:center;box-shadow:0 20px 40px rgba(0,0,0,.45)}
+    .crate-icon{font-size:56px;display:block;animation:crateShake .7s ease-in-out 0s 2}
+    .crate-opened .crate-icon{animation:cratePop .45s ease-out forwards}
+    .crate-box.tier-high{border-color:rgba(124,210,255,.85);box-shadow:0 0 30px rgba(124,210,255,.22),0 20px 40px rgba(0,0,0,.45)}
+    .crate-box.tier-secret{border-color:rgba(255,189,74,.95);box-shadow:0 0 48px rgba(255,189,74,.36),0 20px 60px rgba(0,0,0,.55)}
+    .crate-title{font-weight:900;margin:8px 0;color:#ffe7a8}
+    .crate-reward{color:#d7fff2;margin-top:8px}
+    .crate-sub{color:#a9cde6;font-size:13px;min-height:20px}
+    @keyframes crateShake{0%,100%{transform:rotate(0)}20%{transform:rotate(-7deg)}40%{transform:rotate(7deg)}60%{transform:rotate(-5deg)}80%{transform:rotate(5deg)}}
+    @keyframes cratePop{0%{transform:scale(.8)}100%{transform:scale(1.08)}}
+  </style>
+</head>
+<body>
+  <main class="hub">
+    <header class="hero">
+      <p class="brand">Richdos Gaming Website</p>
+      <h1>Inventory</h1>
+      <p class="tag">Manage your items, equip stuff, and open unopened crates.</p>
+    </header>
+
+    <section class="about">
+      <h2>Quick Links</h2>
+      <p>
+        <a href="index.html">Home</a> |
+        <a href="account.html">Account</a> |
+        <a href="shop.html">Shop</a> |
+        <a href="streak.html">🔥 Streak</a> |
+        <a href="leaderboard.html">Leaderboard</a>
+      </p>
+      <p id="invSummary">Loading inventory...</p>
+      <p id="invStatus" class="status-line"></p>
+    </section>
+
+    <section class="about stack">
+      <article class="mini-card">
+        <h2>Unopened Crates</h2>
+        <div id="crateGrid" class="shop-grid"></div>
+      </article>
+
+      <article class="mini-card">
+        <h2>Owned Tags (change equip)</h2>
+        <div id="tagGrid" class="shop-grid"></div>
+      </article>
+
+      <article class="mini-card">
+        <h2>Unlocked Profile Pics (change equip)</h2>
+        <div id="picGrid" class="shop-grid"></div>
+      </article>
+
+      <article class="mini-card">
+        <h2>Unlocked Games</h2>
+        <ul id="gameList" class="member-list"></ul>
+      </article>
+
+      <article class="mini-card">
+        <h2>Recent Inventory Log</h2>
+        <ul id="invLog" class="member-list"></ul>
+      </article>
+    </section>
+  </main>
+
+  <div id="crateOverlay" class="crate-overlay" aria-hidden="true">
+    <div id="crateBox" class="crate-box">
+      <span class="crate-icon">📦</span>
+      <p class="crate-title" id="crateTitle">Opening crate...</p>
+      <p class="crate-sub" id="crateSub"></p>
+      <p class="crate-reward" id="crateReward"></p>
+    </div>
+  </div>
+
+  <script src="player-system.js"></script>
+  <script>
+    function fmt(v) { return Number(v || 0).toLocaleString(); }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    async function playCrateAnimation(title, rewardText, cinematicTier, rewardRarity) {
+      const overlay = document.getElementById('crateOverlay');
+      const box = document.getElementById('crateBox');
+      const titleEl = document.getElementById('crateTitle');
+      const subEl = document.getElementById('crateSub');
+      const rewardEl = document.getElementById('crateReward');
+      titleEl.textContent = title || 'Opening crate...';
+      subEl.textContent = '';
+      rewardEl.textContent = '';
+      box.classList.remove('crate-opened', 'tier-high', 'tier-secret');
+      if (cinematicTier === 'high') box.classList.add('tier-high');
+      if (cinematicTier === 'secret') box.classList.add('tier-secret');
+      overlay.classList.add('show');
+
+      if (cinematicTier === 'secret') {
+        for (const line of ['Ancient seals are breaking...', 'A hidden chamber is opening...', 'The secret energy is peaking...', 'Divine light is forming...']) {
+          subEl.textContent = line;
+          await sleep(1200);
+        }
+      } else if (cinematicTier === 'high') {
+        for (const line of ['High-tier aura detected...', 'Stabilizing reward core...']) {
+          subEl.textContent = line;
+          await sleep(900);
+        }
+      } else {
+        subEl.textContent = 'Rolling reward...';
+        await sleep(800);
+      }
+
+      box.classList.add('crate-opened');
+      subEl.textContent = `Rarity: ${String(rewardRarity || '').toUpperCase()}`;
+      rewardEl.textContent = rewardText || 'Reward received';
+      await sleep(cinematicTier === 'secret' ? 2600 : (cinematicTier === 'high' ? 1700 : 1200));
+      overlay.classList.remove('show');
+    }
+
+    async function renderInventory() {
+      await RGW.syncCurrentAccountFromLan();
+      const user = RGW.getAccount();
+      const inv = RGW.getInventory(user.username);
+      const tags = RGW.getTagShop();
+      const pics = RGW.getProfilePicShop();
+
+      document.getElementById('invSummary').textContent = `Player: ${user.username} | Equipped tag: ${user.equippedTag || 'none'} | Profile pic: ${RGW.getProfilePicIcon(user.profilePic)}`;
+
+      const crateGrid = document.getElementById('crateGrid');
+      const crates = Array.isArray(inv.unopenedCrates) ? inv.unopenedCrates : [];
+      if (!crates.length) {
+        crateGrid.innerHTML = '<article class="shop-item"><h3>No unopened crates</h3><p class="meta">Buy crates in Shop, then open them here.</p></article>';
+      } else {
+        crateGrid.innerHTML = crates.map(c => {
+          return `<article class="shop-item"><h3>${c.label || 'Crate'}</h3><p class="meta">Rarity: ${c.rarity || 'common'}</p><button class="btn" data-open-crate="${c.uid}">Open Crate</button></article>`;
+        }).join('');
+        crateGrid.querySelectorAll('button[data-open-crate]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const uid = btn.getAttribute('data-open-crate');
+            const result = RGW.openInventoryCrate(uid);
+            if (result.ok) {
+              await playCrateAnimation('Inventory Crate', result.reward || result.message, result.cinematicTier, result.rewardKind === 'divine' ? 'divine' : result.rewardRarity);
+            }
+            document.getElementById('invStatus').textContent = result.message || '';
+            await renderInventory();
+          });
+        });
+      }
+
+      const tagGrid = document.getElementById('tagGrid');
+      const ownedTagIds = Array.isArray(inv.tags) ? inv.tags : [];
+      if (!ownedTagIds.length) {
+        tagGrid.innerHTML = '<article class="shop-item"><h3>No tags yet</h3><p class="meta">Buy tags in Shop.</p></article>';
+      } else {
+        tagGrid.innerHTML = ownedTagIds.map(id => {
+          const t = tags.find(x => x.id === id);
+          const label = t ? t.label : id;
+          const style = t ? t.style : '';
+          const equipped = user.equippedTag === id;
+          return `<article class="shop-item"><h3 style="${style}">${label}</h3><button class="btn" data-equip-tag="${id}" ${equipped ? 'disabled' : ''}>${equipped ? 'Equipped' : 'Equip'}</button></article>`;
+        }).join('');
+        tagGrid.querySelectorAll('button[data-equip-tag]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-equip-tag');
+            const result = RGW.equipTag(id);
+            document.getElementById('invStatus').textContent = result.message || '';
+            await renderInventory();
+          });
+        });
+      }
+
+      const picGrid = document.getElementById('picGrid');
+      const unlockedPicIds = Array.isArray(inv.profilePics) ? inv.profilePics : [];
+      if (!unlockedPicIds.length) {
+        picGrid.innerHTML = '<article class="shop-item"><h3>No profile pics yet</h3></article>';
+      } else {
+        picGrid.innerHTML = unlockedPicIds.map(id => {
+          const p = pics.find(x => x.id === id);
+          const icon = p ? p.icon : '🙂';
+          const label = p ? p.label : id;
+          const equipped = user.profilePic === id;
+          return `<article class="shop-item"><h3>${icon} ${label}</h3><button class="btn" data-equip-pic="${id}" ${equipped ? 'disabled' : ''}>${equipped ? 'Equipped' : 'Equip'}</button></article>`;
+        }).join('');
+        picGrid.querySelectorAll('button[data-equip-pic]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-equip-pic');
+            const result = RGW.equipProfilePic(id);
+            document.getElementById('invStatus').textContent = result.message || '';
+            await renderInventory();
+          });
+        });
+      }
+
+      const gameList = document.getElementById('gameList');
+      const catalog = RGW.getLockedGamesCatalog();
+      const unlockedGames = Array.isArray(inv.unlockedGames) ? inv.unlockedGames : [];
+      if (!unlockedGames.length) {
+        gameList.innerHTML = '<li>No locked games unlocked yet.</li>';
+      } else {
+        gameList.innerHTML = unlockedGames.map(id => {
+          const g = catalog.find(x => x.id === id);
+          return `<li>${g ? g.label : id}</li>`;
+        }).join('');
+      }
+
+      const log = document.getElementById('invLog');
+      const items = Array.isArray(inv.items) ? inv.items.slice(0, 25) : [];
+      if (!items.length) {
+        log.innerHTML = '<li>No inventory history yet.</li>';
+      } else {
+        log.innerHTML = items.map(i => `<li>${i.label}${i.detail ? ` - ${i.detail}` : ''}</li>`).join('');
+      }
+    }
+
+    renderInventory();
+  </script>
+  <script src="music-system.js"></script>
+</body>
+</html>

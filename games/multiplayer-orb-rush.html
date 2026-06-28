@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multiplayer Orb Rush</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(circle at 25% 10%,#285fb4,#080f1f 62%);font-family:Segoe UI,sans-serif;color:#eaf6ff;overflow:hidden}
+    #hud{position:fixed;left:12px;top:12px;background:rgba(5,14,29,.75);padding:8px 10px;border-radius:10px;border:1px solid rgba(169,213,255,.45);font-weight:700}
+    #roomBoard{position:fixed;right:12px;top:12px;width:220px;background:rgba(5,14,29,.75);padding:10px;border-radius:10px;border:1px solid rgba(169,213,255,.45)}
+    #roomBoard h3{margin:0 0 8px 0;font-size:15px}
+    #roomRows{margin:0;padding-left:16px;max-height:260px;overflow:auto}
+    #arena{position:fixed;inset:0}
+    .orb{position:fixed;width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#58d8ff 58%,#1364c2);box-shadow:0 0 20px rgba(101,213,255,.75)}
+    @media (max-width:860px){
+      #roomBoard{right:8px;top:auto;bottom:10px;width:min(260px,92vw);padding:8px}
+      #roomRows{max-height:160px}
+      #hud{left:8px;top:8px;font-size:12px}
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">Room: -- | Score: 0 | Time: 60</div>
+  <aside id="roomBoard"><h3>Room Leaderboard</h3><ol id="roomRows"></ol></aside>
+  <div id="arena"></div>
+
+  <script src="../player-system.js"></script>
+  <script>
+    const GAME_ID='multiplayer-orb-rush';
+    const room = RGW.getCurrentRoomCode() || new URLSearchParams(location.search).get('room') || '';
+    const rows=document.getElementById('roomRows');
+    const hud=document.getElementById('hud');
+    const arena=document.getElementById('arena');
+    let score=0,timeLeft=60,alive=true;
+
+    if(!room){
+      alert('Join a room first from Account page.');
+      location.href='../account.html';
+    } else {
+      RGW.setCurrentRoomCode(room);
+    }
+
+    function spawnOrb(){
+      const o=document.createElement('button');
+      o.className='orb';
+      o.style.left=(Math.random()*(window.innerWidth-60)+15)+'px';
+      o.style.top=(Math.random()*(window.innerHeight-60)+15)+'px';
+      o.addEventListener('click',()=>{
+        if(!alive) return;
+        score+=8;
+        o.remove();
+      });
+      arena.appendChild(o);
+      setTimeout(()=>{if(o.parentNode)o.remove();},1800);
+    }
+
+    async function syncBoard(){
+      if(!alive) return;
+      await RGW.submitRoomScore(GAME_ID, score, room);
+      const board = await RGW.getRoomLeaderboard(GAME_ID, room);
+      const items = (board && board.scores) ? board.scores : [];
+      if(!items.length){ rows.innerHTML='<li>Waiting for players...</li>'; return; }
+      rows.innerHTML = items.slice(0,8).map(r=>`<li>${r.username}: ${r.score}</li>`).join('');
+    }
+
+    function tick(){
+      if(!alive) return;
+      timeLeft -= 1;
+      hud.textContent=`Room: ${room} | Score: ${score} | Time: ${timeLeft}`;
+      if(timeLeft<=0){
+        alive=false;
+        hud.textContent=`Game Over | Score: ${score}`;
+        return;
+      }
+      if(Math.random()<0.65) spawnOrb();
+    }
+
+    setInterval(tick,1000);
+    setInterval(syncBoard,1500);
+    hud.textContent=`Room: ${room} | Score: ${score} | Time: ${timeLeft}`;
+  </script>
+</body>
+</html>

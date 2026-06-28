@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neon Runner 3D</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(circle at 30% 20%,#1d2b5f,#070b16 60%);color:#e8fbff;font-family:Verdana,sans-serif;overflow:hidden}
+    #hud{position:fixed;left:12px;top:12px;background:rgba(3,12,24,.72);padding:8px 10px;border:1px solid rgba(106,236,255,.5);border-radius:10px;font-weight:700}
+    #tips{position:fixed;right:12px;top:12px;background:rgba(3,12,24,.72);padding:8px 10px;border-radius:10px;border:1px solid rgba(106,236,255,.35)}
+    .lane{position:absolute;bottom:0;width:34%;height:100vh;border-left:1px solid rgba(127,227,255,.18);border-right:1px solid rgba(127,227,255,.18)}
+    #l1{left:0}#l2{left:33%}#l3{left:66%}
+    #player{position:fixed;bottom:70px;width:70px;height:80px;background:linear-gradient(180deg,#7cf7ff,#1f99c9);clip-path:polygon(50% 0,100% 100%,0 100%);filter:drop-shadow(0 0 16px #7cf7ff);transition:left .08s linear;left:calc(50% - 35px)}
+    .obs{position:fixed;width:64px;height:70px;background:linear-gradient(160deg,#ff8f77,#b12253);border:1px solid rgba(255,228,219,.55);transform:skewY(-10deg)}
+    #end{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,8,18,.78)}
+    #endBox{background:rgba(10,18,35,.95);border:1px solid rgba(139,236,255,.5);padding:18px;border-radius:12px;text-align:center}
+    button{cursor:pointer;border:none;padding:9px 14px;border-radius:10px;background:#54d6ff;color:#07253b;font-weight:800}
+    @media (max-width:780px){#tips{top:auto;bottom:12px;right:12px;font-size:12px;padding:6px 8px}}
+  </style>
+</head>
+<body>
+  <div id="hud">Score: 0 | Speed: 1.0x</div>
+  <div id="tips">A/D or Arrow keys to switch lanes</div>
+  <div id="l1" class="lane"></div><div id="l2" class="lane"></div><div id="l3" class="lane"></div>
+  <div id="player"></div>
+  <div id="end"><div id="endBox"><h2 id="endText">Game Over</h2><button onclick="location.reload()">Play Again</button></div></div>
+
+  <script>
+    const lanes=[16,50,84];
+    let lane=1,score=0,speed=6,alive=true;
+    const player=document.getElementById('player');
+    const hud=document.getElementById('hud');
+    function drawPlayer(){player.style.left=`calc(${lanes[lane]}% - 35px)`}
+    drawPlayer();
+
+    document.addEventListener('keydown',e=>{
+      if(!alive) return;
+      if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') lane=Math.max(0,lane-1);
+      if(e.key==='ArrowRight'||e.key==='d'||e.key==='D') lane=Math.min(2,lane+1);
+      drawPlayer();
+    });
+
+    const obstacles=[];
+    function spawn(){
+      const o=document.createElement('div');
+      o.className='obs';
+      const l=Math.floor(Math.random()*3);
+      o.dataset.lane=String(l);
+      o.dataset.y='-90';
+      o.style.left=`calc(${lanes[l]}% - 32px)`;
+      o.style.top='-90px';
+      document.body.appendChild(o);
+      obstacles.push(o);
+    }
+
+    function endGame(){
+      alive=false;
+      hud.textContent=`Game Over | Score: ${score}`;
+      document.getElementById('endText').textContent=`Game Over - Score: ${score}`;
+      document.getElementById('end').style.display='flex';
+    }
+
+    let t=0;
+    function loop(){
+      if(!alive) return;
+      t++;
+      if(t%50===0) spawn();
+      if(t%220===0) speed=Math.min(10.8, speed+0.35);
+      score+=1;
+      hud.textContent=`Score: ${score} | Speed: ${speed.toFixed(1)}x`;
+      for(let i=obstacles.length-1;i>=0;i--){
+        const o=obstacles[i];
+        let y=Number(o.dataset.y)+speed;
+        o.dataset.y=String(y);
+        o.style.top=y+'px';
+        if(y>window.innerHeight){o.remove();obstacles.splice(i,1);continue;}
+        if(Number(o.dataset.lane)===lane && y>window.innerHeight-170 && y<window.innerHeight-55){
+          endGame();
+          return;
+        }
+      }
+      requestAnimationFrame(loop);
+    }
+    loop();
+  </script>
+  <script src="../player-system.js"></script>
+</body>
+</html>

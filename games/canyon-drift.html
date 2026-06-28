@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../graphics.css" />
+  <title>Canyon Drift</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #111a26; color: #eff7ff; font-family: Trebuchet MS, sans-serif; }
+    .shell { width: min(94vw, 760px); text-align: center; }
+    a { color: #a8ddff; }
+    canvas { border: 1px solid #8dbada; border-radius: 10px; background: linear-gradient(#273a52, #0f1b2c); }
+    select, button { border: 1px solid #97c6e4; border-radius: 8px; background: #264f74; color: #eef9ff; padding: 7px 10px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p><a href="../index.html">Home</a> | <a href="../page-1-shooting.html">P1 Shooting</a> | <a href="../page-2-racing.html">P2 Racing</a> | <a href="../page-3-puzzle.html">P3 Puzzle</a> | <a href="../page-4-arcade.html">P4 Arcade</a> | <a href="../page-5-realistic.html">P5 Realistic</a> | <a href="../page-6-party.html">P6 Party</a></p>
+    <h1>Canyon Drift</h1>
+    <p>Dodge canyon rocks. Move with Left/Right arrows.</p>
+    <p>
+      Level:
+      <select id="level">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button id="newRace" type="button">New Race</button>
+    </p>
+    <canvas id="c" width="520" height="760"></canvas>
+    <p id="hud"></p>
+  </div>
+  <script>
+    const c = document.getElementById('c');
+    const g = c.getContext('2d');
+    const hud = document.getElementById('hud');
+    const levelSelect = document.getElementById('level');
+    const newRaceButton = document.getElementById('newRace');
+
+    const levels = {
+      easy: { speed: 5, spawnEvery: 34, rockMin: 3.8, rockMax: 5.2 },
+      medium: { speed: 6.2, spawnEvery: 26, rockMin: 4.8, rockMax: 6.6 },
+      hard: { speed: 7.4, spawnEvery: 20, rockMin: 5.8, rockMax: 8.1 }
+    };
+
+    const keys = { l: false, r: false };
+    const car = { x: 260, y: 670, w: 48, h: 84 };
+    const rocks = [];
+
+    let score = 0;
+    let distance = 0;
+    let tick = 0;
+    let over = false;
+
+    function cfg() { return levels[levelSelect.value] || levels.medium; }
+
+    function reset() {
+      score = 0;
+      distance = 0;
+      tick = 0;
+      over = false;
+      rocks.length = 0;
+      car.x = 260;
+    }
+
+    function hit(a, b) {
+      return a.x - a.w / 2 < b.x + b.w / 2 && a.x + a.w / 2 > b.x - b.w / 2 && a.y - a.h / 2 < b.y + b.h / 2 && a.y + a.h / 2 > b.y - b.h / 2;
+    }
+
+    function spawnRock() {
+      const r = cfg();
+      rocks.push({
+        x: 130 + Math.random() * 260,
+        y: -80,
+        w: 42 + Math.random() * 16,
+        h: 40 + Math.random() * 22,
+        speed: r.rockMin + Math.random() * (r.rockMax - r.rockMin)
+      });
+    }
+
+    function update() {
+      if (over) return;
+      const r = cfg();
+
+      if (keys.l) car.x -= r.speed;
+      if (keys.r) car.x += r.speed;
+      car.x = Math.max(120, Math.min(400, car.x));
+
+      tick += 1;
+      if (tick % r.spawnEvery === 0) spawnRock();
+
+      for (let i = rocks.length - 1; i >= 0; i--) {
+        rocks[i].y += rocks[i].speed;
+        if (rocks[i].y > c.height + 100) {
+          rocks.splice(i, 1);
+          score += 8;
+          continue;
+        }
+        if (hit({ x: car.x, y: car.y, w: car.w, h: car.h }, { x: rocks[i].x, y: rocks[i].y, w: rocks[i].w, h: rocks[i].h })) {
+          over = true;
+        }
+      }
+
+      distance += r.speed * 0.2;
+    }
+
+    function drawRoad() {
+      g.fillStyle = '#324861';
+      g.fillRect(110, 0, 300, c.height);
+      g.fillStyle = '#1b2a3f';
+      g.fillRect(0, 0, 110, c.height);
+      g.fillRect(410, 0, 110, c.height);
+    }
+
+    function drawCar(x, y, w, h, color) {
+      g.save();
+      g.translate(x, y);
+      g.fillStyle = color;
+      g.fillRect(-w / 2, -h / 2, w, h);
+      g.fillStyle = '#dff2ff';
+      g.fillRect(-w / 2 + 8, -h / 2 + 10, w - 16, 18);
+      g.restore();
+    }
+
+    function draw() {
+      g.clearRect(0, 0, c.width, c.height);
+      drawRoad();
+
+      g.fillStyle = '#8b7863';
+      for (const rock of rocks) {
+        g.beginPath();
+        g.ellipse(rock.x, rock.y, rock.w / 2, rock.h / 2, 0, 0, Math.PI * 2);
+        g.fill();
+      }
+
+      drawCar(car.x, car.y, car.w, car.h, '#66d2a2');
+
+      hud.textContent = over
+        ? `Crash (${levelSelect.value})! Score: ${score} | Distance: ${Math.floor(distance)}m.`
+        : `Level: ${levelSelect.value} | Score: ${score} | Distance: ${Math.floor(distance)}m`;
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    addEventListener('keydown', e => {
+      if (e.code === 'ArrowLeft') keys.l = true;
+      if (e.code === 'ArrowRight') keys.r = true;
+      if (e.code === 'KeyR') reset();
+    });
+    addEventListener('keyup', e => {
+      if (e.code === 'ArrowLeft') keys.l = false;
+      if (e.code === 'ArrowRight') keys.r = false;
+    });
+
+    levelSelect.addEventListener('change', reset);
+    newRaceButton.addEventListener('click', reset);
+
+    reset();
+    loop();
+  </script>
+  <script src="../player-system.js"></script>
+  <script src="../music-system.js"></script>
+</body>
+</html>
+
+
+
+
+
