@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../graphics.css" />
+  <title>Farm Day</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #133124; color: #eef8ff; font-family: Trebuchet MS, sans-serif; }
+    .shell { width: min(94vw, 760px); text-align: center; }
+    a { color: #b8f5ff; }
+    #grid { margin: 10px auto; width: min(92vw, 520px); display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .plot { height: 80px; border: 1px solid rgba(222,255,226,.35); border-radius: 8px; background: #21472e; color: #ecfff0; cursor: pointer; font-weight: 700; }
+    button, select { border: 1px solid #97c6e4; border-radius: 8px; background: #2e6f43; color: #eef9ff; padding: 8px 10px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p><a href="../index.html">Home</a> | <a href="../page-5-realistic.html">P5 Realistic</a> | <a href="../page-3-puzzle.html">P3 Puzzle</a></p>
+    <h1>Farm Day</h1>
+    <p>Simulation game: plant, grow, and harvest crops.</p>
+    <p>
+      Level:
+      <select id="level">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button id="newFarm" type="button">New Farm</button>
+    </p>
+    <div id="grid"></div>
+    <p id="hud"></p>
+  </div>
+  <script>
+    const grid = document.getElementById('grid');
+    const hud = document.getElementById('hud');
+    const levelSelect = document.getElementById('level');
+    const newFarmButton = document.getElementById('newFarm');
+
+    const levels = {
+      easy: { growTicks: 5, reward: 14 },
+      medium: { growTicks: 7, reward: 18 },
+      hard: { growTicks: 9, reward: 24 }
+    };
+
+    let plots = [];
+    let money = 40;
+    let score = 0;
+    let tick = 0;
+
+    function cfg() { return levels[levelSelect.value] || levels.medium; }
+
+    function reset() {
+      plots = Array.from({ length: 15 }, () => ({ stage: 0, age: 0 }));
+      money = 40;
+      score = 0;
+      tick = 0;
+      render();
+    }
+
+    function plant(i) {
+      if (plots[i].stage !== 0) return;
+      if (money < 6) return;
+      money -= 6;
+      plots[i].stage = 1;
+      plots[i].age = 0;
+      render();
+    }
+
+    function harvest(i) {
+      if (plots[i].stage !== 3) return;
+      money += cfg().reward;
+      score += cfg().reward;
+      plots[i].stage = 0;
+      plots[i].age = 0;
+      render();
+    }
+
+    function update() {
+      tick += 1;
+      if (tick % 50 !== 0) return;
+
+      for (const p of plots) {
+        if (p.stage === 0) continue;
+        p.age += 1;
+        if (p.stage === 1 && p.age >= Math.floor(cfg().growTicks / 2)) {
+          p.stage = 2;
+        } else if (p.stage === 2 && p.age >= cfg().growTicks) {
+          p.stage = 3;
+        }
+      }
+    }
+
+    function stageLabel(p) {
+      if (p.stage === 0) return 'Empty';
+      if (p.stage === 1) return 'Seed';
+      if (p.stage === 2) return 'Growing';
+      return 'Harvest';
+    }
+
+    function stageColor(p) {
+      if (p.stage === 0) return '#21472e';
+      if (p.stage === 1) return '#3b6136';
+      if (p.stage === 2) return '#4c7f3f';
+      return '#77b44f';
+    }
+
+    function render() {
+      grid.innerHTML = '';
+      plots.forEach((p, i) => {
+        const b = document.createElement('button');
+        b.className = 'plot';
+        b.style.background = stageColor(p);
+        b.textContent = stageLabel(p);
+        b.addEventListener('click', () => {
+          if (p.stage === 0) plant(i);
+          else if (p.stage === 3) harvest(i);
+        });
+        grid.appendChild(b);
+      });
+
+      hud.textContent = `Level: ${levelSelect.value} | Money: ${money} | Farm Score: ${score}`;
+    }
+
+    function loop() {
+      update();
+      render();
+      requestAnimationFrame(loop);
+    }
+
+    newFarmButton.addEventListener('click', reset);
+    levelSelect.addEventListener('change', reset);
+
+    reset();
+    loop();
+  </script>
+  <script src="../player-system.js"></script>
+  <script src="../music-system.js"></script>
+</body>
+</html>

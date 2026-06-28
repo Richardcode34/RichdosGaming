@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../graphics.css" />
+  <title>Brain Buzz</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #2d183a; color: #f8f1ff; font-family: Trebuchet MS, sans-serif; }
+    .shell { width: min(94vw, 760px); text-align: center; }
+    a { color: #d3b7ff; }
+    .card { margin: 10px auto; padding: 18px; border-radius: 12px; border: 1px solid rgba(250,240,255,.35); background: rgba(24,10,35,.55); }
+    .answers { display: grid; gap: 10px; margin-top: 10px; }
+    button, select { border: 1px solid #c79ce9; border-radius: 8px; background: #57326d; color: #f8f1ff; padding: 10px 12px; font-weight: 700; }
+    button:hover { filter: brightness(1.1); }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p><a href="../index.html">Home</a> | <a href="../page-3-puzzle.html">P3 Puzzle</a> | <a href="../page-6-party.html">P6 Party</a></p>
+    <h1>Brain Buzz</h1>
+    <p>Quiz/Trivia game. Pick the right answers fast.</p>
+    <p>
+      Level:
+      <select id="level">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button id="newQuiz" type="button">New Quiz</button>
+    </p>
+    <div class="card">
+      <h2 id="question">Press New Quiz</h2>
+      <div id="answers" class="answers"></div>
+    </div>
+    <p id="hud"></p>
+  </div>
+  <script>
+    const questionEl = document.getElementById('question');
+    const answersEl = document.getElementById('answers');
+    const hud = document.getElementById('hud');
+    const levelSelect = document.getElementById('level');
+    const newQuizButton = document.getElementById('newQuiz');
+
+    const questionBank = [
+      { q: 'Which planet is known as the Red Planet?', a: ['Mars', 'Venus', 'Jupiter', 'Mercury'], c: 0 },
+      { q: 'What is 12 x 8?', a: ['88', '86', '96', '92'], c: 2 },
+      { q: 'HTML stands for?', a: ['Hyper Text Markup Language', 'High Text Machine Language', 'Home Tool Markup Language', 'Hyperlink Transfer Machine Logic'], c: 0 },
+      { q: 'Which ocean is the largest?', a: ['Atlantic', 'Arctic', 'Pacific', 'Indian'], c: 2 },
+      { q: 'What gas do plants absorb?', a: ['Oxygen', 'Carbon Dioxide', 'Nitrogen', 'Hydrogen'], c: 1 },
+      { q: 'How many degrees in a right angle?', a: ['45', '90', '180', '360'], c: 1 },
+      { q: 'Which language runs in the browser?', a: ['Python', 'Java', 'JavaScript', 'C#'], c: 2 },
+      { q: 'Largest mammal?', a: ['Elephant', 'Blue Whale', 'Hippo', 'Giraffe'], c: 1 },
+      { q: 'Who painted the Mona Lisa?', a: ['Van Gogh', 'Picasso', 'Da Vinci', 'Rembrandt'], c: 2 },
+      { q: 'What is H2O?', a: ['Hydrogen', 'Helium', 'Salt', 'Water'], c: 3 }
+    ];
+
+    const levels = {
+      easy: { rounds: 5, points: 10 },
+      medium: { rounds: 7, points: 12 },
+      hard: { rounds: 9, points: 16 }
+    };
+
+    let rounds = [];
+    let index = 0;
+    let score = 0;
+
+    function cfg() { return levels[levelSelect.value] || levels.medium; }
+
+    function shuffle(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function startQuiz() {
+      rounds = shuffle(questionBank).slice(0, cfg().rounds);
+      index = 0;
+      score = 0;
+      renderQuestion();
+    }
+
+    function renderQuestion() {
+      const q = rounds[index];
+      if (!q) {
+        questionEl.textContent = 'Quiz complete!';
+        answersEl.innerHTML = '';
+        hud.textContent = `Level: ${levelSelect.value} | Final Score: ${score}`;
+        return;
+      }
+
+      questionEl.textContent = q.q;
+      answersEl.innerHTML = '';
+      q.a.forEach((text, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = text;
+        b.addEventListener('click', () => answer(i));
+        answersEl.appendChild(b);
+      });
+
+      hud.textContent = `Level: ${levelSelect.value} | Question ${index + 1}/${rounds.length} | Score: ${score}`;
+    }
+
+    function answer(choice) {
+      const q = rounds[index];
+      if (!q) return;
+      if (choice === q.c) {
+        score += cfg().points;
+      } else if (levelSelect.value === 'hard') {
+        score = Math.max(0, score - 4);
+      }
+      index += 1;
+      renderQuestion();
+    }
+
+    newQuizButton.addEventListener('click', startQuiz);
+    levelSelect.addEventListener('change', startQuiz);
+
+    startQuiz();
+  </script>
+  <script src="../player-system.js"></script>
+  <script src="../music-system.js"></script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../graphics.css" />
+  <title>Sky Hop</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #10213c; color: #eef8ff; font-family: Trebuchet MS, sans-serif; }
+    .shell { width: min(95vw, 920px); text-align: center; }
+    a { color: #9ed8ff; }
+    #game { margin: 10px auto; width: min(94vw, 860px); height: 420px; border: 1px solid #8fc0df; border-radius: 10px; background: linear-gradient(#164a8f, #1b2d50); position: relative; overflow: hidden; }
+    .player, .platform, .gem, .haz { position: absolute; }
+    .player { width: 26px; height: 26px; background: #ffe08a; border-radius: 6px; }
+    .platform { height: 14px; background: rgba(230,245,255,.35); border: 1px solid rgba(255,255,255,.35); border-radius: 8px; }
+    .gem { width: 14px; height: 14px; border-radius: 999px; background: #9dffe7; }
+    .haz { width: 24px; height: 24px; border-radius: 999px; background: #ff8d8d; }
+    button, select { border: 1px solid #97c6e4; border-radius: 8px; background: #275074; color: #eef9ff; padding: 8px 10px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p><a href="../index.html">Home</a> | <a href="../page-4-arcade.html">P4 Arcade</a> | <a href="../page-6-party.html">P6 Party</a></p>
+    <h1>Sky Hop</h1>
+    <p>Platformer game. Move with Arrow keys or A/D, jump with Space.</p>
+    <p>
+      Level:
+      <select id="level">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button id="newGame" type="button">New Run</button>
+    </p>
+    <div id="game"></div>
+    <p id="hud"></p>
+  </div>
+  <script>
+    const game = document.getElementById('game');
+    const hud = document.getElementById('hud');
+    const levelSelect = document.getElementById('level');
+    const newGameButton = document.getElementById('newGame');
+
+    const W = 860;
+    const H = 420;
+
+    const levelCfg = {
+      easy: { gems: 8, hazards: 2, speed: 3.4 },
+      medium: { gems: 10, hazards: 3, speed: 3.9 },
+      hard: { gems: 13, hazards: 5, speed: 4.5 }
+    };
+
+    let keys = { left: false, right: false, jump: false };
+    let player;
+    let platforms = [];
+    let gems = [];
+    let hazards = [];
+    let score = 0;
+    let over = false;
+
+    function cfg() { return levelCfg[levelSelect.value] || levelCfg.medium; }
+
+    function buildWorld() {
+      platforms = [
+        { x: 0, y: 390, w: 860 },
+        { x: 80, y: 320, w: 170 },
+        { x: 320, y: 280, w: 170 },
+        { x: 560, y: 230, w: 190 },
+        { x: 210, y: 180, w: 140 },
+        { x: 470, y: 130, w: 160 }
+      ];
+      gems = [];
+      hazards = [];
+
+      for (let i = 0; i < cfg().gems; i++) {
+        const p = platforms[1 + (i % (platforms.length - 1))];
+        gems.push({ x: p.x + 20 + (i * 37 % Math.max(30, p.w - 30)), y: p.y - 20, alive: true });
+      }
+
+      for (let i = 0; i < cfg().hazards; i++) {
+        hazards.push({ x: 160 + i * 140, y: 366, vx: i % 2 ? 2.0 : -2.0 });
+      }
+    }
+
+    function reset() {
+      player = { x: 40, y: 350, w: 26, h: 26, vx: 0, vy: 0, onGround: false };
+      score = 0;
+      over = false;
+      buildWorld();
+    }
+
+    function intersects(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function update() {
+      if (over) return;
+
+      const speed = cfg().speed;
+      player.vx = 0;
+      if (keys.left) player.vx = -speed;
+      if (keys.right) player.vx = speed;
+      if (keys.jump && player.onGround) {
+        player.vy = -10.5;
+        player.onGround = false;
+      }
+
+      player.vy += 0.45;
+      player.x += player.vx;
+      player.y += player.vy;
+
+      if (player.x < 0) player.x = 0;
+      if (player.x > W - player.w) player.x = W - player.w;
+
+      player.onGround = false;
+      for (const p of platforms) {
+        const box = { x: p.x, y: p.y, w: p.w, h: 14 };
+        if (intersects(player, box) && player.vy >= 0 && player.y + player.h - player.vy <= p.y + 2) {
+          player.y = p.y - player.h;
+          player.vy = 0;
+          player.onGround = true;
+        }
+      }
+
+      if (player.y > H + 20) over = true;
+
+      for (const g of gems) {
+        if (!g.alive) continue;
+        const box = { x: g.x, y: g.y, w: 14, h: 14 };
+        if (intersects(player, box)) {
+          g.alive = false;
+          score += 10;
+        }
+      }
+
+      for (const h of hazards) {
+        h.x += h.vx;
+        if (h.x < 0 || h.x > W - 24) h.vx *= -1;
+        const box = { x: h.x, y: h.y, w: 24, h: 24 };
+        if (intersects(player, box)) over = true;
+      }
+
+      if (gems.every(g => !g.alive)) {
+        score += 40;
+        over = true;
+      }
+    }
+
+    function render() {
+      game.innerHTML = '';
+
+      for (const p of platforms) {
+        const el = document.createElement('div');
+        el.className = 'platform';
+        el.style.left = `${p.x}px`;
+        el.style.top = `${p.y}px`;
+        el.style.width = `${p.w}px`;
+        game.appendChild(el);
+      }
+
+      for (const g of gems) {
+        if (!g.alive) continue;
+        const el = document.createElement('div');
+        el.className = 'gem';
+        el.style.left = `${g.x}px`;
+        el.style.top = `${g.y}px`;
+        game.appendChild(el);
+      }
+
+      for (const h of hazards) {
+        const el = document.createElement('div');
+        el.className = 'haz';
+        el.style.left = `${h.x}px`;
+        el.style.top = `${h.y}px`;
+        game.appendChild(el);
+      }
+
+      const me = document.createElement('div');
+      me.className = 'player';
+      me.style.left = `${player.x}px`;
+      me.style.top = `${player.y}px`;
+      game.appendChild(me);
+
+      hud.textContent = over
+        ? `Run finished (${levelSelect.value}). Score: ${score}`
+        : `Level: ${levelSelect.value} | Score: ${score} | Gems left: ${gems.filter(g => g.alive).length}`;
+    }
+
+    function loop() {
+      update();
+      render();
+      requestAnimationFrame(loop);
+    }
+
+    window.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+      if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.jump = true;
+    });
+
+    window.addEventListener('keyup', e => {
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+      if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.jump = false;
+    });
+
+    levelSelect.addEventListener('change', reset);
+    newGameButton.addEventListener('click', reset);
+
+    reset();
+    loop();
+  </script>
+  <script src="../player-system.js"></script>
+  <script src="../music-system.js"></script>
+</body>
+</html>

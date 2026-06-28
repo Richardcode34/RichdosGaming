@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../graphics.css" />
+  <title>Block Builder</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #10243b; color: #eef8ff; font-family: Trebuchet MS, sans-serif; }
+    .shell { width: min(94vw, 760px); text-align: center; }
+    a { color: #9ed8ff; }
+    #arena { margin: 10px auto; width: min(92vw, 580px); height: 420px; border: 1px solid #8fc0df; border-radius: 10px; background: linear-gradient(#173651, #0f2235); position: relative; overflow: hidden; }
+    .block { position: absolute; border-radius: 4px; }
+    select, button { border: 1px solid #97c6e4; border-radius: 8px; background: #275074; color: #eef9ff; padding: 7px 10px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p><a href="../index.html">Home</a> | <a href="../page-3-puzzle.html">P3 Puzzle</a> | <a href="../page-4-arcade.html">P4 Arcade</a></p>
+    <h1>Block Builder</h1>
+    <p>Stack falling blocks. Click to drop each block.</p>
+    <p>
+      Level:
+      <select id="level">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button id="newGame" type="button">New Game</button>
+    </p>
+    <div id="arena"></div>
+    <p id="hud"></p>
+  </div>
+  <script>
+    const arena = document.getElementById('arena');
+    const hud = document.getElementById('hud');
+    const levelSelect = document.getElementById('level');
+    const newGameButton = document.getElementById('newGame');
+
+    const levels = {
+      easy: { speed: 2.2, baseWidth: 140 },
+      medium: { speed: 3, baseWidth: 120 },
+      hard: { speed: 3.8, baseWidth: 100 }
+    };
+
+    let blocks = [];
+    let active = null;
+    let score = 0;
+    let over = false;
+    let dir = 1;
+
+    function cfg() { return levels[levelSelect.value] || levels.medium; }
+
+    function makeBlock(y, width) {
+      return {
+        x: 0,
+        y,
+        w: width,
+        h: 18,
+        color: `hsl(${Math.floor(Math.random() * 360)} 80% 68%)`
+      };
+    }
+
+    function reset() {
+      blocks = [];
+      const base = makeBlock(arena.clientHeight - 24, cfg().baseWidth);
+      base.x = (arena.clientWidth - base.w) / 2;
+      blocks.push(base);
+      active = makeBlock(base.y - 24, base.w);
+      active.x = 0;
+      score = 0;
+      over = false;
+      dir = 1;
+      render();
+    }
+
+    function drop() {
+      if (over || !active) return;
+
+      const prev = blocks[blocks.length - 1];
+      const left = Math.max(active.x, prev.x);
+      const right = Math.min(active.x + active.w, prev.x + prev.w);
+      const overlap = right - left;
+
+      if (overlap <= 8) {
+        over = true;
+        render();
+        return;
+      }
+
+      active.x = left;
+      active.w = overlap;
+      blocks.push(active);
+      score += 10;
+
+      if (active.y <= 32) {
+        over = true;
+        render();
+        return;
+      }
+
+      active = makeBlock(active.y - 24, overlap);
+      active.x = 0;
+    }
+
+    function update() {
+      if (over || !active) return;
+
+      active.x += cfg().speed * dir;
+      if (active.x <= 0) {
+        active.x = 0;
+        dir = 1;
+      }
+      if (active.x + active.w >= arena.clientWidth) {
+        active.x = arena.clientWidth - active.w;
+        dir = -1;
+      }
+    }
+
+    function render() {
+      arena.innerHTML = '';
+
+      for (const b of blocks) {
+        const el = document.createElement('div');
+        el.className = 'block';
+        el.style.left = `${b.x}px`;
+        el.style.top = `${b.y}px`;
+        el.style.width = `${b.w}px`;
+        el.style.height = `${b.h}px`;
+        el.style.background = b.color;
+        arena.appendChild(el);
+      }
+
+      if (active && !over) {
+        const el = document.createElement('div');
+        el.className = 'block';
+        el.style.left = `${active.x}px`;
+        el.style.top = `${active.y}px`;
+        el.style.width = `${active.w}px`;
+        el.style.height = `${active.h}px`;
+        el.style.background = '#8ae7ff';
+        arena.appendChild(el);
+      }
+
+      hud.textContent = over
+        ? `Game Over (${levelSelect.value}). Score: ${score}. Click New Game.`
+        : `Level: ${levelSelect.value} | Score: ${score}`;
+    }
+
+    function loop() {
+      update();
+      render();
+      requestAnimationFrame(loop);
+    }
+
+    arena.addEventListener('click', drop);
+    newGameButton.addEventListener('click', reset);
+    levelSelect.addEventListener('change', reset);
+
+    reset();
+    loop();
+  </script>
+  <script src="../player-system.js"></script>
+  <script src="../music-system.js"></script>
+</body>
+</html>
+
+

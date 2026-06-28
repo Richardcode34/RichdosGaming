@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="graphics.css" />
+  <title>Account - Richdos Gaming</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="hub">
+    <header class="hero">
+      <p class="brand">Richdos Gaming Website</p>
+      <h1>Account System</h1>
+      <p class="tag">Switch player profile and track your total plays and scores.</p>
+      <div class="glass-strip">
+        <span class="pill" id="langLabel">Language</span>
+        <select id="langSelect" class="select" aria-label="Language selector">
+          <option value="en" selected>English</option>
+          <option value="es">Espanol</option>
+          <option value="fr">Francais</option>
+          <option value="zh">Chinese (中文)</option>
+          <option value="hi">Hindi (हिन्दी)</option>
+          <option value="ar">Arabic (العربية)</option>
+          <option value="de">German (Deutsch)</option>
+          <option value="pt">Portuguese (Português)</option>
+          <option value="ja">Japanese (日本語)</option>
+          <option value="ko">Korean (한국어)</option>
+          <option value="ru">Russian (Русский)</option>
+          <option value="it">Italian (Italiano)</option>
+          <option value="tr">Turkish (Türkçe)</option>
+        </select>
+      </div>
+    </header>
+
+    <section class="about">
+      <h2>Account Controls</h2>
+      <div class="glass-strip">
+        <span class="pill">Profile Manager</span>
+        <input id="nameInput" class="input" type="text" placeholder="Player name" maxlength="24" />
+        <input id="ownerPassInput" class="input" type="password" placeholder="Owner password" maxlength="40" />
+        <button id="createSwitchBtn" class="btn" type="button">Create / Switch</button>
+        <button id="logoutBtn" class="btn" type="button">Sign Out</button>
+      </div>
+      <p><a id="linkHome" href="index.html">Home</a> | <a id="linkShop" href="shop.html">Shop</a> | <a id="linkStreak" href="streak.html">🔥 Streak</a> | <a id="linkBoard" href="leaderboard.html">Open Leaderboard</a></p>
+      <ul id="topGames" class="inline-list"></ul>
+    </section>
+
+    <section class="cards" aria-label="Account Stats">
+      <article class="card">
+        <h2>Current Player</h2>
+        <p id="currentPlayer">Loading...</p>
+      </article>
+      <article class="card">
+        <h2>Total Plays</h2>
+        <p id="totalPlays">0</p>
+      </article>
+      <article class="card">
+        <h2>Total Score</h2>
+        <p id="totalScore">0</p>
+      </article>
+      <article class="card">
+        <h2>Best Score</h2>
+        <p id="bestScore">0</p>
+      </article>
+      <article class="card">
+        <h2>Role</h2>
+        <p id="role">Player</p>
+      </article>
+      <article class="card">
+        <h2>Rank</h2>
+        <p id="rankName">Dirt</p>
+        <p id="rankPoints">0 pts</p>
+        <div class="rank-progress" aria-hidden="true"><span id="rankBar"></span></div>
+      </article>
+      <article class="card">
+        <h2>Level</h2>
+        <p id="level">1</p>
+        <p id="credits">0 credits</p>
+        <p id="tokens">0 tokens</p>
+      </article>
+    </section>
+
+    <section class="about stack">
+      <article class="mini-card">
+        <h2>Rank Ladder</h2>
+        <ul id="rankLadder" class="inline-list"></ul>
+      </article>
+
+      <article class="mini-card">
+        <h2>Quest Board</h2>
+        <p class="meta">Complete quests for free credits.</p>
+        <div id="questGrid" class="quest-grid"></div>
+      </article>
+
+      <article class="mini-card">
+        <h2>Friends</h2>
+        <p class="meta">Add friends to trade and message.</p>
+        <div class="glass-strip">
+          <input id="friendTarget" class="input" type="text" maxlength="24" placeholder="Friend username" />
+          <button id="friendAddBtn" class="btn" type="button">Send Request</button>
+          <button id="friendRefreshBtn" class="btn" type="button">Refresh</button>
+        </div>
+        <p id="friendStatus" class="status-line"></p>
+        <h3>Friend Requests</h3>
+        <ul id="friendRequests" class="member-list"></ul>
+        <h3>Friends List</h3>
+        <ul id="friendsList" class="member-list"></ul>
+      </article>
+
+      <article class="mini-card">
+        <h2>Name Tag Shop</h2>
+        <p class="meta">Buy shiny tags with credits (10-35). You get 5 credits every level up.</p>
+        <div id="shopGrid" class="shop-grid"></div>
+        <p id="shopStatus" class="status-line"></p>
+      </article>
+
+      <article class="mini-card room-card">
+        <h2>Multiplayer Room (LAN/Public Link)</h2>
+        <p class="meta">Create or join a room code so friends can play together on the same shared server.</p>
+        <div class="glass-strip">
+          <input id="roomCode" class="input" type="text" maxlength="12" placeholder="Room code e.g. BLOCKCITY" />
+          <button id="joinRoomBtn" class="btn" type="button">Join Room</button>
+          <button id="refreshRoomBtn" class="btn" type="button">Refresh Rooms</button>
+        </div>
+        <p id="roomStatus" class="status-line"></p>
+        <ul id="roomList" class="member-list"></ul>
+      </article>
+
+      <article class="mini-card room-card" id="ownerPanel" hidden>
+        <h2>Owner Controls</h2>
+        <p class="meta">Only Bob123meep with password can control all systems.</p>
+        <div class="glass-strip">
+          <input id="ownerTargetUser" class="input" type="text" maxlength="24" placeholder="Target username" />
+          <input id="ownerSetPoints" class="input" type="number" min="0" step="1" placeholder="Rank points" />
+          <input id="ownerSetCredits" class="input" type="number" min="0" step="1" placeholder="Credits" />
+          <input id="ownerSetPass" class="input" type="password" maxlength="40" placeholder="Owner password" />
+          <button id="ownerApplyBtn" class="btn" type="button">Apply</button>
+        </div>
+        <div class="glass-strip">
+          <select id="ownerSetRole" class="select">
+            <option value="player">Role: Player</option>
+            <option value="helper">Role: Helper</option>
+            <option value="mod">Role: Mod</option>
+            <option value="admin">Role: Admin</option>
+            <option value="owner">Role: Owner</option>
+          </select>
+          <button id="ownerRoleBtn" class="btn" type="button">Set Role</button>
+          <button id="ownerResetBtn" class="btn" type="button">Reset Player</button>
+        </div>
+        <div class="glass-strip">
+          <input id="compTitle" class="input" type="text" maxlength="80" placeholder="Weekly comp title" />
+          <input id="compTheme" class="input" type="text" maxlength="80" placeholder="Theme" />
+          <input id="compDeadline" class="input" type="text" maxlength="40" placeholder="Deadline (e.g. Sunday 8PM)" />
+          <button id="compPublishBtn" class="btn" type="button">Publish Weekly Competition</button>
+        </div>
+        <div class="glass-strip">
+          <button id="ownerResetBoardBtn" class="btn" type="button">Reset Leaderboard</button>
+        </div>
+        <details open>
+          <summary>Owner Control Center</summary>
+          <div class="glass-strip" style="margin-top:8px">
+            <button id="ownerCenterRefreshBtn" class="btn" type="button">Refresh Control Center</button>
+            <button id="ownerRefreshAllBtn" class="btn" type="button">Refresh Everything</button>
+          </div>
+          <h3>Global Site Controls</h3>
+          <div class="glass-strip">
+            <input id="ownerBroadcastText" class="input" type="text" maxlength="280" placeholder="Broadcast message to all players" />
+            <button id="ownerBroadcastBtn" class="btn" type="button">Broadcast</button>
+          </div>
+          <div class="glass-strip">
+            <input id="ownerUpdateText" class="input" type="text" maxlength="320" placeholder="Post update to Updates feed" />
+            <button id="ownerPostUpdateBtn" class="btn" type="button">Post Update</button>
+          </div>
+          <h3>Quick Moderation</h3>
+          <div class="glass-strip">
+            <input id="ownerQuickBanTarget" class="input" type="text" maxlength="64" placeholder="Username or IP" />
+            <input id="ownerQuickBanReason" class="input" type="text" maxlength="80" placeholder="Reason" />
+            <input id="ownerQuickBanHours" class="input" type="number" min="1" step="1" placeholder="Hours" />
+            <button id="ownerQuickBanBtn" class="btn" type="button">Quick Ban</button>
+          </div>
+          <div class="glass-strip">
+            <input id="ownerQuickUnbanIp" class="input" type="text" maxlength="64" placeholder="IP to unban" />
+            <button id="ownerQuickUnbanBtn" class="btn" type="button">Quick Unban</button>
+          </div>
+          <h3>System Snapshot</h3>
+          <ul id="ownerSystemList" class="member-list"></ul>
+          <h3>Helpers Snapshot</h3>
+          <ul id="ownerHelperList" class="member-list"></ul>
+          <h3>Open Help Tickets</h3>
+          <ul id="ownerTicketList" class="member-list"></ul>
+          <h3>Admin Audit Log</h3>
+          <ul id="ownerAuditList" class="member-list"></ul>
+        </details>
+        <p id="ownerStatus" class="status-line"></p>
+      </article>
+
+      <article class="mini-card room-card" id="modPanel" hidden>
+        <h2>Staff Admin Panel</h2>
+        <p class="meta" id="staffPanelMeta">Helpers can view moderation state. Mods/admins/owner can ban and unban.</p>
+        <p id="staffRoleNote" class="status-line"></p>
+        <div class="glass-strip">
+          <input id="modTarget" class="input" type="text" maxlength="64" placeholder="Target username or IP" />
+          <input id="modReason" class="input" type="text" maxlength="80" placeholder="Reason" />
+          <input id="modHours" class="input" type="number" min="1" step="1" placeholder="Hours" />
+          <input id="modPass" class="input" type="password" maxlength="40" placeholder="Owner password (owner only)" />
+          <button id="modBanBtn" class="btn" type="button">Ban Target</button>
+        </div>
+        <div class="glass-strip">
+          <input id="modUnbanIp" class="input" type="text" maxlength="64" placeholder="IP to unban" />
+          <button id="modUnbanBtn" class="btn" type="button">Unban IP</button>
+          <button id="modRefreshBtn" class="btn" type="button">Refresh Moderation</button>
+        </div>
+        <div class="glass-strip">
+          <select id="merchantMode" class="select">
+            <option value="auto">Merchant: Auto</option>
+            <option value="off">Merchant: Off</option>
+            <option value="force-open">Merchant: Force Open</option>
+            <option value="force-secret">Merchant: Force Secret</option>
+          </select>
+          <button id="merchantModeBtn" class="btn" type="button">Apply Merchant Mode</button>
+        </div>
+        <p id="modStatus" class="status-line"></p>
+        <ul id="modBanList" class="member-list"></ul>
+      </article>
+    </section>
+  </main>
+
+  <script src="player-system.js"></script>
+  <script>
+    const I18N = {
+      en: { home: 'Home', shop: 'Shop', streak: 'Streak', board: 'Open Leaderboard', credits: 'credits', points: 'pts', roleOwner: 'Owner', roleAdmin: 'Admin', roleMod: 'Mod', roleHelper: 'Helper', rolePlayer: 'Player' },
+      es: { home: 'Inicio', shop: 'Tienda', streak: 'Racha', board: 'Abrir Tabla', credits: 'creditos', points: 'pts', roleOwner: 'Propietario', roleAdmin: 'Admin', roleMod: 'Mod', roleHelper: 'Ayudante', rolePlayer: 'Jugador' },
+      fr: { home: 'Accueil', shop: 'Boutique', streak: 'Serie', board: 'Classement', credits: 'credits', points: 'pts', roleOwner: 'Proprietaire', roleAdmin: 'Admin', roleMod: 'Mod', roleHelper: 'Assistant', rolePlayer: 'Joueur' },
+      zh: { home: '主页', shop: '商店', streak: '连胜', board: '排行榜', credits: '积分币', points: '分', roleOwner: '所有者', roleAdmin: '管理员', roleMod: '版主', roleHelper: '助手', rolePlayer: '玩家' },
+      hi: { home: 'होम', shop: 'दुकान', streak: 'स्ट्रीक', board: 'लीडरबोर्ड खोलें', credits: 'क्रेडिट', points: 'अंक', roleOwner: 'मालिक', roleAdmin: 'एडमिन', roleMod: 'मॉड', roleHelper: 'हेल्पर', rolePlayer: 'खिलाड़ी' },
+      ar: { home: 'الرئيسية', shop: 'المتجر', streak: 'السلسلة', board: 'لوحة الصدارة', credits: 'رصيد', points: 'نقاط', roleOwner: 'المالك', roleAdmin: 'مشرف', roleMod: 'مود', roleHelper: 'مساعد', rolePlayer: 'لاعب' },
+      de: { home: 'Start', shop: 'Shop', streak: 'Serie', board: 'Bestenliste', credits: 'Credits', points: 'Pkt', roleOwner: 'Besitzer', roleAdmin: 'Admin', roleMod: 'Mod', roleHelper: 'Helfer', rolePlayer: 'Spieler' },
+      pt: { home: 'Inicio', shop: 'Loja', streak: 'Sequencia', board: 'Classificacao', credits: 'creditos', points: 'pts', roleOwner: 'Dono', roleAdmin: 'Admin', roleMod: 'Mod', roleHelper: 'Ajudante', rolePlayer: 'Jogador' },
+      ja: { home: 'ホーム', shop: 'ショップ', streak: '連続記録', board: 'ランキング', credits: 'クレジット', points: 'ポイント', roleOwner: 'オーナー', roleAdmin: '管理者', roleMod: 'モデレーター', roleHelper: 'ヘルパー', rolePlayer: 'プレイヤー' },
+      ko: { home: '홈', shop: '상점', streak: '연속', board: '리더보드', credits: '크레딧', points: '점수', roleOwner: '소유자', roleAdmin: '관리자', roleMod: '모더레이터', roleHelper: '헬퍼', rolePlayer: '플레이어' },
+      ru: { home: 'Главная', shop: 'Магазин', streak: 'Серия', board: 'Таблица лидеров', credits: 'кредиты', points: 'очк', roleOwner: 'Владелец', roleAdmin: 'Админ', roleMod: 'Модератор', roleHelper: 'Помощник', rolePlayer: 'Игрок' },
+      it: { home: 'Home', shop: 'Negozio', streak: 'Serie', board: 'Classifica', credits: 'crediti', points: 'pt', roleOwner: 'Proprietario', roleAdmin: 'Admin', roleMod: 'Mod', roleHelper: 'Helper', rolePlayer: 'Giocatore' },
+      tr: { home: 'Ana Sayfa', shop: 'Magaza', streak: 'Seri', board: 'Liderlik Tablosu', credits: 'kredi', points: 'puan', roleOwner: 'Sahip', roleAdmin: 'Admin', roleMod: 'Mod', roleHelper: 'Yardimci', rolePlayer: 'Oyuncu' }
+    };
+
+    function t(key) {
+      const lang = localStorage.getItem('rgw_lang') || 'en';
+      const dict = I18N[lang] || I18N.en;
+      return dict[key] || I18N.en[key] || key;
+    }
+
+    function fmt(v) {
+      return Number(v || 0).toLocaleString();
+    }
+
+    function refreshRankLadder() {
+      const ladder = document.getElementById('rankLadder');
+      const tiers = RGW.getRankTiers();
+      ladder.innerHTML = tiers.map(r => {
+        const max = Number.isFinite(r.max) ? r.max : '601+';
+        const range = Number.isFinite(r.max) ? `${r.min}-${r.max}` : '601+';
+        return `<li>${range}: ${r.name}</li>`;
+      }).join('');
+    }
+
+    function renderShop(user) {
+      const grid = document.getElementById('shopGrid');
+      const tags = RGW.getTagShop();
+      const owned = user && Array.isArray(user.ownedTags) ? user.ownedTags : [];
+      const equipped = user ? (user.equippedTag || '') : '';
+      grid.innerHTML = tags.map(tag => {
+        const isOwned = owned.includes(tag.id);
+        const isEquipped = equipped === tag.id;
+        const action = isOwned ? (isEquipped ? 'Equipped' : 'Equip') : `Buy (${tag.cost})`;
+        const btnDisabled = isEquipped ? 'disabled' : '';
+        return `<article class="shop-item"><h3 style="${tag.style}">${tag.label}</h3><p class="meta">Cost: ${tag.cost}</p><button class="btn" data-tag="${tag.id}" ${btnDisabled}>${action}</button></article>`;
+      }).join('');
+
+      grid.querySelectorAll('button[data-tag]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tagId = btn.getAttribute('data-tag');
+          const hasTag = owned.includes(tagId);
+          const result = hasTag ? RGW.equipTag(tagId) : RGW.buyTag(tagId);
+          document.getElementById('shopStatus').textContent = result.message || '';
+          loadCurrent();
+        });
+      });
+    }
+
+    function renderQuests(user) {
+      const grid = document.getElementById('questGrid');
+      const completed = user && Array.isArray(user.completedQuests) ? user.completedQuests : [];
+      const quests = RGW.getQuests();
+      grid.innerHTML = quests.map(q => {
+        const done = completed.includes(q.id);
+        return `<article class="quest-item"><h3>${q.label}</h3><p class="meta">Reward: ${q.credits} credits</p><button class="btn" data-quest="${q.id}" ${done ? 'disabled' : ''}>${done ? 'Claimed' : 'Claim'}</button></article>`;
+      }).join('');
+
+      grid.querySelectorAll('button[data-quest]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-quest');
+          const result = RGW.claimQuest(id);
+          document.getElementById('shopStatus').textContent = result.message || '';
+          loadCurrent();
+        });
+      });
+    }
+
+    function renderFriends() {
+      const state = RGW.getFriendsState();
+      const requests = Array.isArray(state.requests) ? state.requests : [];
+      const friends = Array.isArray(state.friends) ? state.friends : [];
+
+      const reqList = document.getElementById('friendRequests');
+      if (!requests.length) {
+        reqList.innerHTML = '<li>No pending requests.</li>';
+      } else {
+        reqList.innerHTML = requests.map(name => `<li>${name} <button class="btn" data-accept-friend="${name}">Accept</button></li>`).join('');
+        reqList.querySelectorAll('button[data-accept-friend]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const name = btn.getAttribute('data-accept-friend');
+            const result = RGW.acceptFriendRequest(name);
+            document.getElementById('friendStatus').textContent = result.message || '';
+            renderFriends();
+          });
+        });
+      }
+
+      const friendList = document.getElementById('friendsList');
+      if (!friends.length) {
+        friendList.innerHTML = '<li>No friends yet.</li>';
+      } else {
+        friendList.innerHTML = friends.map(name => `<li>${name} <button class="btn" data-remove-friend="${name}">Remove</button> <a class="btn" href="messages.html">Message</a></li>`).join('');
+        friendList.querySelectorAll('button[data-remove-friend]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const name = btn.getAttribute('data-remove-friend');
+            const result = RGW.removeFriend(name);
+            document.getElementById('friendStatus').textContent = result.message || '';
+            renderFriends();
+          });
+        });
+      }
+    }
+
+    async function renderRooms() {
+      const rooms = await RGW.getRooms();
+      const list = document.getElementById('roomList');
+      if (!rooms.length) {
+        list.innerHTML = '<li>No rooms yet. Join one to start multiplayer.</li>';
+        return;
+      }
+      list.innerHTML = rooms.map(r => `<li>${r.code}: ${(r.members || []).join(', ')}</li>`).join('');
+    }
+
+    async function renderModeration() {
+      const username = RGW.getCurrentUsername();
+      const isOwner = RGW.isOwnerUser(username);
+      const isAdmin = RGW.isAdminUser(username);
+      const isMod = RGW.isModUser(username);
+      const isHelper = RGW.isHelperUser(username);
+      const canViewStaffPanel = isOwner || isAdmin || isMod || isHelper;
+      const canModerate = isOwner || isAdmin || isMod;
+      const panel = document.getElementById('modPanel');
+      panel.hidden = !canViewStaffPanel;
+      if (!canViewStaffPanel) return;
+
+      const roleNote = document.getElementById('staffRoleNote');
+      if (roleNote) {
+        if (isOwner) roleNote.textContent = 'Role: Owner (full staff controls)';
+        else if (isAdmin) roleNote.textContent = 'Role: Admin (full staff controls)';
+        else if (isMod) roleNote.textContent = 'Role: Mod (moderation controls)';
+        else roleNote.textContent = 'Role: Helper (view-only moderation state)';
+      }
+
+      ['modTarget', 'modReason', 'modHours', 'modPass', 'modUnbanIp', 'modBanBtn', 'modUnbanBtn', 'merchantMode', 'merchantModeBtn']
+        .forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.disabled = !canModerate;
+        });
+
+      const data = await RGW.getModerationState();
+      const list = document.getElementById('modBanList');
+      const ipBans = Array.isArray(data.ipBans) ? data.ipBans : [];
+      if (!ipBans.length) {
+        list.innerHTML = '<li>No IP bans active.</li>';
+      } else {
+        list.innerHTML = ipBans.map(b => {
+          const reason = b.reason ? ` | reason: ${b.reason}` : '';
+          const until = b.expiresAt ? ` | until: ${new Date(b.expiresAt).toLocaleString()}` : '';
+          const by = b.bannedBy ? ` | by: ${b.bannedBy}` : '';
+          return `<li>${b.ip || 'unknown'}${by}${reason}${until}</li>`;
+        }).join('');
+      }
+      if (!data.ok && data.message) {
+        document.getElementById('modStatus').textContent = data.message;
+      }
+
+      const merchantCfg = RGW.getMerchantOverride();
+      const modeSelect = document.getElementById('merchantMode');
+      if (modeSelect) {
+        modeSelect.value = merchantCfg.mode || 'auto';
+      }
+    }
+
+    function renderLang() {
+      const lang = localStorage.getItem('rgw_lang') || 'en';
+      const sel = document.getElementById('langSelect');
+      if (sel) sel.value = lang;
+      const home = document.getElementById('linkHome');
+      const shop = document.getElementById('linkShop');
+      const streak = document.getElementById('linkStreak');
+      const board = document.getElementById('linkBoard');
+      if (home) home.textContent = t('home');
+      if (shop) shop.textContent = t('shop');
+      if (streak) streak.textContent = '🔥 ' + t('streak');
+      if (board) board.textContent = t('board');
+    }
+
+    function renderOwnerControlCenter() {
+      const me = RGW.getCurrentUsername();
+      if (!RGW.isOwnerUser(me)) return;
+
+      const helperList = document.getElementById('ownerHelperList');
+      const ticketList = document.getElementById('ownerTicketList');
+      const auditList = document.getElementById('ownerAuditList');
+      const systemList = document.getElementById('ownerSystemList');
+      if (!helperList || !ticketList || !auditList || !systemList) return;
+
+      const allPlayers = RGW.allAccountsArray();
+      const updates = RGW.getSiteUpdates();
+      const audit = RGW.getAdminAuditLog();
+      const openTickets = RGW.getHelpTickets().filter(t => String(t.status || '') !== 'closed');
+      systemList.innerHTML = [
+        `Players: ${allPlayers.length}`,
+        `Open tickets: ${openTickets.length}`,
+        `Posted updates: ${updates.length}`,
+        `Audit entries: ${audit.length}`
+      ].map(x => `<li>${x}</li>`).join('');
+
+      const snap = RGW.getHelpersSnapshot();
+      const helpers = Array.isArray(snap.helpers) ? snap.helpers : [];
+      if (!helpers.length) {
+        helperList.innerHTML = '<li>No helper profiles found.</li>';
+      } else {
+        helperList.innerHTML = helpers.slice(0, 30).map(h => {
+          const role = String(h.role || 'player');
+          const state = h.online ? (h.available ? 'Online - Available' : 'Online - Busy') : 'Offline';
+          return `<li>${h.username} | ${role} | ${state}</li>`;
+        }).join('');
+      }
+
+      if (!openTickets.length) {
+        ticketList.innerHTML = '<li>No open tickets.</li>';
+      } else {
+        ticketList.innerHTML = openTickets.slice(0, 30).map(t => `<li>${t.username}: ${t.message}</li>`).join('');
+      }
+
+      if (!audit.length) {
+        auditList.innerHTML = '<li>No audit entries yet.</li>';
+      } else {
+        auditList.innerHTML = audit.slice(-30).reverse().map(l => {
+          return `<li>${new Date(l.at).toLocaleString()} | ${l.actor || 'system'} | ${l.type || 'unknown'} | ${(l.target || '')}</li>`;
+        }).join('');
+      }
+    }
+
+    async function loadCurrent() {
+      await RGW.syncCurrentAccountFromLan();
+      const accounts = RGW.allAccountsArray();
+      const username = RGW.getCurrentUsername();
+      const user = accounts.find(a => a.username === username);
+      const isOwner = RGW.isOwnerUser(username);
+      const isAdmin = RGW.isAdminUser(username);
+      const isMod = RGW.isModUser(username);
+      const isHelper = RGW.isHelperUser(username);
+      document.getElementById('currentPlayer').textContent = username || 'None';
+      document.getElementById('totalPlays').textContent = fmt(user ? user.totalPlays : 0);
+      document.getElementById('totalScore').textContent = fmt(user ? user.totalScore : 0);
+      document.getElementById('bestScore').textContent = fmt(user ? user.bestScore : 0);
+      document.getElementById('role').textContent = isOwner
+        ? t('roleOwner')
+        : (isAdmin ? t('roleAdmin') : (isMod ? t('roleMod') : (isHelper ? t('roleHelper') : t('rolePlayer'))));
+      const points = user ? (Number(user.rankPoints) || 0) : 0;
+      const rank = user ? RGW.rankFromPoints(points) : 'Dirt';
+      const level = user ? (Number(user.level) || RGW.levelFromPoints(points)) : 1;
+      const credits = user ? (Number(user.credits) || 0) : 0;
+      const tokens = user ? (Number(user.tokens) || 0) : 0;
+      document.getElementById('rankName').textContent = rank;
+      document.getElementById('rankPoints').textContent = `${fmt(points)} ${t('points')}`;
+      document.getElementById('level').textContent = fmt(level);
+      document.getElementById('credits').textContent = `${fmt(credits)} ${t('credits')}`;
+      document.getElementById('tokens').textContent = `${fmt(tokens)} tokens`;
+
+      const toNext = 100;
+      const inLevel = points % 100;
+      document.getElementById('rankBar').style.width = `${Math.min(100, Math.round((inLevel / toNext) * 100))}%`;
+
+      const ownerPanel = document.getElementById('ownerPanel');
+      ownerPanel.hidden = !isOwner;
+      const modPanel = document.getElementById('modPanel');
+      modPanel.hidden = !(isOwner || isAdmin || isMod || isHelper);
+
+      const nameInput = document.getElementById('nameInput');
+      const switchBtn = document.getElementById('createSwitchBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (isOwner) {
+        nameInput.disabled = true;
+        nameInput.placeholder = 'Owner name is locked';
+        switchBtn.disabled = true;
+        logoutBtn.disabled = true;
+      } else {
+        nameInput.disabled = false;
+        nameInput.placeholder = 'Player name';
+        switchBtn.disabled = false;
+        logoutBtn.disabled = false;
+      }
+
+      const topGames = document.getElementById('topGames');
+      const gameStats = user && user.gameStats ? Object.entries(user.gameStats) : [];
+      gameStats.sort((a, b) => (Number(b[1].best) || 0) - (Number(a[1].best) || 0));
+      const top = gameStats.slice(0, 3);
+      if (!top.length) {
+        topGames.innerHTML = '<li>Play any game to build your personal highlights.</li>';
+      } else {
+        topGames.innerHTML = top.map(([gameId, stats]) => {
+          const label = gameId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          return `<li>${label}: best ${fmt(stats.best || 0)}, plays ${fmt(stats.plays || 0)}</li>`;
+        }).join('');
+      }
+
+      renderShop(user || null);
+      renderQuests(user || null);
+      renderFriends();
+      renderOwnerControlCenter();
+      await renderModeration();
+    }
+
+    document.getElementById('createSwitchBtn').addEventListener('click', () => {
+      const next = document.getElementById('nameInput').value.trim();
+      const pass = document.getElementById('ownerPassInput').value;
+      if (!next) return;
+      if (RGW.switchAccount(next, pass)) location.reload();
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if (RGW.signOut()) {
+        location.reload();
+      }
+    });
+
+    document.getElementById('ownerApplyBtn').addEventListener('click', () => {
+      const target = document.getElementById('ownerTargetUser').value.trim();
+      const points = document.getElementById('ownerSetPoints').value;
+      const credits = document.getElementById('ownerSetCredits').value;
+      const pass = document.getElementById('ownerSetPass').value;
+      const result = RGW.ownerSetPointsCredits(target, points, credits, pass);
+      document.getElementById('ownerStatus').textContent = result.message || '';
+      if (result.ok) {
+        loadCurrent();
+      }
+    });
+
+    document.getElementById('ownerRoleBtn').addEventListener('click', async () => {
+      const target = document.getElementById('ownerTargetUser').value.trim();
+      const role = document.getElementById('ownerSetRole').value;
+      const pass = document.getElementById('ownerSetPass').value;
+      const result = await RGW.ownerSetRole(target, role, pass);
+      document.getElementById('ownerStatus').textContent = result.message || '';
+      if (result.ok) await loadCurrent();
+    });
+
+    document.getElementById('ownerResetBtn').addEventListener('click', () => {
+      const target = document.getElementById('ownerTargetUser').value.trim();
+      const pass = document.getElementById('ownerSetPass').value;
+      const result = RGW.ownerResetPlayer(target, pass);
+      document.getElementById('ownerStatus').textContent = result.message || '';
+      if (result.ok) loadCurrent();
+    });
+
+    document.getElementById('compPublishBtn').addEventListener('click', async () => {
+      const pass = document.getElementById('ownerSetPass').value;
+      const payload = {
+        title: document.getElementById('compTitle').value.trim() || 'Weekly Drawing Competition',
+        theme: document.getElementById('compTheme').value.trim(),
+        deadline: document.getElementById('compDeadline').value.trim()
+      };
+      const result = await RGW.setWeeklyCompetition(payload, pass);
+      document.getElementById('ownerStatus').textContent = result.message || (result.ok ? 'Competition published' : 'Publish failed');
+    });
+
+    document.getElementById('langSelect').addEventListener('change', (e) => {
+      localStorage.setItem('rgw_lang', e.target.value);
+      renderLang();
+      if (window.RGWApplyLanguage) window.RGWApplyLanguage();
+      try { window.dispatchEvent(new Event('rgw-lang-changed')); } catch {}
+      loadCurrent();
+    });
+
+    document.getElementById('joinRoomBtn').addEventListener('click', async () => {
+      const code = document.getElementById('roomCode').value.trim();
+      const result = await RGW.joinRoom(code);
+      document.getElementById('roomStatus').textContent = result && result.ok
+        ? `Joined room ${result.room.code}`
+        : (result.message || result.error || 'Join failed');
+      await renderRooms();
+    });
+
+    document.getElementById('refreshRoomBtn').addEventListener('click', async () => {
+      await renderRooms();
+      document.getElementById('roomStatus').textContent = 'Rooms refreshed';
+    });
+
+    document.getElementById('modRefreshBtn').addEventListener('click', async () => {
+      await renderModeration();
+      document.getElementById('modStatus').textContent = 'Moderation refreshed';
+    });
+
+    document.getElementById('friendAddBtn').addEventListener('click', () => {
+      const target = document.getElementById('friendTarget').value.trim();
+      const result = RGW.sendFriendRequest(target);
+      document.getElementById('friendStatus').textContent = result.message || '';
+      if (result.ok) {
+        document.getElementById('friendTarget').value = '';
+      }
+      renderFriends();
+    });
+
+    document.getElementById('friendRefreshBtn').addEventListener('click', () => {
+      renderFriends();
+      document.getElementById('friendStatus').textContent = 'Friends refreshed';
+    });
+
+    document.getElementById('modBanBtn').addEventListener('click', async () => {
+      const target = document.getElementById('modTarget').value.trim();
+      const reason = document.getElementById('modReason').value.trim();
+      const hours = Number(document.getElementById('modHours').value || 0);
+      const pass = document.getElementById('modPass').value;
+      const result = await RGW.banTarget(target, reason, hours, pass);
+      document.getElementById('modStatus').textContent = result.message || (result.ok ? 'Target banned' : 'Ban failed');
+      if (result.ok) {
+        if (result.ip) document.getElementById('modUnbanIp').value = result.ip;
+        await renderModeration();
+      }
+    });
+
+    document.getElementById('modUnbanBtn').addEventListener('click', async () => {
+      const ip = document.getElementById('modUnbanIp').value.trim();
+      const pass = document.getElementById('modPass').value;
+      const result = await RGW.unbanIp(ip, pass);
+      document.getElementById('modStatus').textContent = result.message || (result.ok ? 'IP unbanned' : 'Unban failed');
+      if (result.ok) {
+        await renderModeration();
+      }
+    });
+
+    document.getElementById('merchantModeBtn').addEventListener('click', async () => {
+      const mode = document.getElementById('merchantMode').value;
+      const result = RGW.setMerchantMode(mode);
+      document.getElementById('modStatus').textContent = result.message || (result.ok ? 'Merchant mode updated' : 'Update failed');
+      if (result.ok) {
+        await renderModeration();
+      }
+    });
+
+    document.getElementById('ownerResetBoardBtn').addEventListener('click', async () => {
+      const pass = document.getElementById('ownerSetPass').value;
+      const result = await RGW.ownerResetLeaderboard(pass);
+      document.getElementById('ownerStatus').textContent = result.message || '';
+      if (result.ok) {
+        await loadCurrent();
+      }
+    });
+
+    document.getElementById('ownerCenterRefreshBtn').addEventListener('click', () => {
+      renderOwnerControlCenter();
+      document.getElementById('ownerStatus').textContent = 'Owner control center refreshed';
+    });
+
+    document.getElementById('ownerRefreshAllBtn').addEventListener('click', async () => {
+      await loadCurrent();
+      await renderRooms();
+      await renderModeration();
+      document.getElementById('ownerStatus').textContent = 'All systems refreshed';
+    });
+
+    document.getElementById('ownerBroadcastBtn').addEventListener('click', async () => {
+      const text = document.getElementById('ownerBroadcastText').value.trim();
+      const result = RGW.sendStaffBroadcast(text);
+      document.getElementById('ownerStatus').textContent = result.message || '';
+      if (result.ok) {
+        document.getElementById('ownerBroadcastText').value = '';
+        renderOwnerControlCenter();
+      }
+    });
+
+    document.getElementById('ownerPostUpdateBtn').addEventListener('click', () => {
+      const text = document.getElementById('ownerUpdateText').value.trim();
+      const result = RGW.postSiteUpdate(text);
+      document.getElementById('ownerStatus').textContent = result.message || '';
+      if (result.ok) {
+        document.getElementById('ownerUpdateText').value = '';
+        renderOwnerControlCenter();
+      }
+    });
+
+    document.getElementById('ownerQuickBanBtn').addEventListener('click', async () => {
+      const target = document.getElementById('ownerQuickBanTarget').value.trim();
+      const reason = document.getElementById('ownerQuickBanReason').value.trim();
+      const hours = Number(document.getElementById('ownerQuickBanHours').value || 0);
+      const pass = document.getElementById('ownerSetPass').value;
+      const result = await RGW.banTarget(target, reason, hours, pass);
+      document.getElementById('ownerStatus').textContent = result.message || '';
+      if (result.ok) {
+        if (result.ip) document.getElementById('ownerQuickUnbanIp').value = result.ip;
+        await renderModeration();
+        renderOwnerControlCenter();
+      }
+    });
+
+    document.getElementById('ownerQuickUnbanBtn').addEventListener('click', async () => {
+      const ip = document.getElementById('ownerQuickUnbanIp').value.trim();
+      const pass = document.getElementById('ownerSetPass').value;
+      const result = await RGW.unbanIp(ip, pass);
+      document.getElementById('ownerStatus').textContent = result.message || '';
+      if (result.ok) {
+        await renderModeration();
+        renderOwnerControlCenter();
+      }
+    });
+
+    refreshRankLadder();
+    renderLang();
+    loadCurrent();
+    renderRooms();
+    renderModeration();
+  </script>
+  <script src="music-system.js"></script>
+</body>
+</html>
+
+

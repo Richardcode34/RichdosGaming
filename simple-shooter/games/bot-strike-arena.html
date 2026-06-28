@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../graphics.css" />
+  <title>Bot Strike Arena</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0c1724; color: #eef6ff; font-family: Trebuchet MS, sans-serif; }
+    .shell { width: min(95vw, 920px); text-align: center; }
+    a { color: #9ed8ff; }
+    canvas { width: 100%; max-width: 860px; height: auto; border: 1px solid #86b8d6; border-radius: 10px; background: linear-gradient(#17293d, #101c2b); }
+    .hud { margin: 8px 0; color: #d8e8ff; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p><a href="../index.html">Home</a> | <a href="../page-1-shooting.html">P1 Shooting</a> | <a href="../page-2-racing.html">P2 Racing</a> | <a href="../page-3-puzzle.html">P3 Puzzle</a> | <a href="../page-4-arcade.html">P4 Arcade</a> | <a href="../page-5-realistic.html">P5 Realistic</a> | <a href="../page-6-party.html">P6 Party</a></p>
+    <h1>Bot Strike Arena</h1>
+    <p>Simple tactical shooter with bots. Move WASD/Arrows, aim with mouse, shoot by clicking.</p>
+    <p>
+      Level:
+      <select id="level">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button id="newRound" type="button">New Round</button>
+    </p>
+    <canvas id="c" width="860" height="520"></canvas>
+    <p id="hud" class="hud"></p>
+  </div>
+  <script>
+    const c = document.getElementById('c');
+    const g = c.getContext('2d');
+    const hud = document.getElementById('hud');
+    const levelSelect = document.getElementById('level');
+    const newRoundButton = document.getElementById('newRound');
+    const levels = {
+      easy: { botCount: 4, botHp: 30, botFireMin: 55, botFireMax: 90, botSpeedMin: 0.9, botSpeedMax: 1.35 },
+      medium: { botCount: 6, botHp: 40, botFireMin: 40, botFireMax: 75, botSpeedMin: 1.1, botSpeedMax: 1.6 },
+      hard: { botCount: 9, botHp: 52, botFireMin: 28, botFireMax: 62, botSpeedMin: 1.2, botSpeedMax: 2 }
+    };
+
+    const keys = { w: false, a: false, s: false, d: false };
+    const mouse = { x: c.width / 2, y: c.height / 2 };
+
+    const player = { x: 180, y: 260, r: 14, speed: 2.7, hp: 100, cd: 0 };
+    const bots = [];
+    const bullets = [];
+    const impacts = [];
+
+    let score = 0;
+    let gameOver = false;
+
+    function currentLevel() {
+      return levels[levelSelect.value] || levels.medium;
+    }
+
+    function rand(min, max) { return Math.random() * (max - min) + min; }
+    function dist(a, b) { const dx = a.x - b.x; const dy = a.y - b.y; return Math.sqrt(dx * dx + dy * dy); }
+
+    function spawnBots() {
+      const level = currentLevel();
+      bots.length = 0;
+      for (let i = 0; i < level.botCount; i++) {
+        bots.push({
+          x: rand(360, 820),
+          y: rand(40, 480),
+          r: 13,
+          hp: level.botHp,
+          maxHp: level.botHp,
+          cd: rand(level.botFireMin, level.botFireMax),
+          speed: rand(level.botSpeedMin, level.botSpeedMax)
+        });
+      }
+    }
+
+    function shoot(from, toX, toY, speed, dmg, owner) {
+      const dx = toX - from.x;
+      const dy = toY - from.y;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      bullets.push({ x: from.x, y: from.y, vx: dx / len * speed, vy: dy / len * speed, dmg, owner, life: 90 });
+    }
+
+    function step() {
+      if (gameOver) return;
+      const level = currentLevel();
+
+      const moveX = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+      const moveY = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
+      const norm = Math.hypot(moveX, moveY) || 1;
+      player.x += moveX / norm * player.speed;
+      player.y += moveY / norm * player.speed;
+      player.x = Math.max(player.r, Math.min(c.width - player.r, player.x));
+      player.y = Math.max(player.r, Math.min(c.height - player.r, player.y));
+
+      if (player.cd > 0) player.cd -= 1;
+
+      for (const b of bots) {
+        if (b.hp <= 0) continue;
+        const dx = player.x - b.x;
+        const dy = player.y - b.y;
+        const d = Math.hypot(dx, dy) || 1;
+
+        if (d > 150) {
+          b.x += dx / d * b.speed;
+          b.y += dy / d * b.speed;
+        }
+
+        b.cd -= 1;
+        if (b.cd <= 0 && d < 360) {
+          shoot({ x: b.x, y: b.y }, player.x, player.y, 4.1, 8, 'bot');
+          b.cd = rand(level.botFireMin, level.botFireMax);
+        }
+      }
+
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.x += b.vx;
+        b.y += b.vy;
+        b.life -= 1;
+
+        if (b.x < 0 || b.y < 0 || b.x > c.width || b.y > c.height || b.life <= 0) {
+          bullets.splice(i, 1);
+          continue;
+        }
+
+        if (b.owner === 'player') {
+          for (const bot of bots) {
+            if (bot.hp <= 0) continue;
+            if (dist({ x: b.x, y: b.y }, bot) < bot.r) {
+              bot.hp -= b.dmg;
+              impacts.push({ x: b.x, y: b.y, life: 10 });
+              bullets.splice(i, 1);
+              if (bot.hp <= 0) score += 10;
+              break;
+            }
+          }
+        } else {
+          if (dist({ x: b.x, y: b.y }, player) < player.r) {
+            player.hp -= b.dmg;
+            impacts.push({ x: b.x, y: b.y, life: 10 });
+            bullets.splice(i, 1);
+            if (player.hp <= 0) gameOver = true;
+          }
+        }
+      }
+
+      for (let i = impacts.length - 1; i >= 0; i--) {
+        impacts[i].life -= 1;
+        if (impacts[i].life <= 0) impacts.splice(i, 1);
+      }
+
+      if (bots.every(b => b.hp <= 0)) spawnBots();
+    }
+
+    function drawGrid() {
+      g.strokeStyle = 'rgba(175,220,255,0.08)';
+      g.lineWidth = 1;
+      for (let x = 0; x < c.width; x += 40) {
+        g.beginPath(); g.moveTo(x, 0); g.lineTo(x, c.height); g.stroke();
+      }
+      for (let y = 0; y < c.height; y += 40) {
+        g.beginPath(); g.moveTo(0, y); g.lineTo(c.width, y); g.stroke();
+      }
+    }
+
+    function draw() {
+      g.clearRect(0, 0, c.width, c.height);
+      drawGrid();
+
+      for (const b of bots) {
+        if (b.hp <= 0) continue;
+        g.fillStyle = '#ff8f8f';
+        g.beginPath(); g.arc(b.x, b.y, b.r, 0, Math.PI * 2); g.fill();
+        g.fillStyle = 'rgba(0,0,0,0.4)';
+        g.fillRect(b.x - 18, b.y - 22, 36, 4);
+        g.fillStyle = '#74ff9a';
+        g.fillRect(b.x - 18, b.y - 22, 36 * Math.max(0, b.hp / b.maxHp), 4);
+      }
+
+      const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+      g.save();
+      g.translate(player.x, player.y);
+      g.rotate(angle);
+      g.fillStyle = '#71d8ff';
+      g.fillRect(-12, -10, 24, 20);
+      g.fillStyle = '#baf0ff';
+      g.fillRect(0, -3, 20, 6);
+      g.restore();
+
+      g.fillStyle = '#ffe08a';
+      for (const b of bullets) g.fillRect(b.x - 2, b.y - 2, 4, 4);
+
+      for (const p of impacts) {
+        g.fillStyle = `rgba(255, 220, 150, ${p.life / 10})`;
+        g.beginPath(); g.arc(p.x, p.y, 8 - p.life * 0.5, 0, Math.PI * 2); g.fill();
+      }
+
+      hud.textContent = gameOver
+        ? `Game Over (${levelSelect.value}). Score: ${score}. Press R or New Round.`
+        : `Level: ${levelSelect.value} | HP: ${Math.max(0, player.hp)} | Score: ${score}`;
+    }
+
+    function loop() { step(); draw(); requestAnimationFrame(loop); }
+
+    addEventListener('keydown', e => {
+      if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.w = true;
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.a = true;
+      if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.s = true;
+      if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.d = true;
+      if (e.code === 'KeyR' && gameOver) {
+        player.hp = 100; player.x = 180; player.y = 260; score = 0; gameOver = false; bullets.length = 0; impacts.length = 0; spawnBots();
+      }
+    });
+
+    addEventListener('keyup', e => {
+      if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.w = false;
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.a = false;
+      if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.s = false;
+      if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.d = false;
+    });
+
+    c.addEventListener('mousemove', e => {
+      const r = c.getBoundingClientRect();
+      mouse.x = (e.clientX - r.left) * (c.width / r.width);
+      mouse.y = (e.clientY - r.top) * (c.height / r.height);
+    });
+
+    c.addEventListener('mousedown', () => {
+      if (gameOver || player.cd > 0) return;
+      shoot({ x: player.x, y: player.y }, mouse.x, mouse.y, 8.2, 20, 'player');
+      player.cd = 8;
+    });
+
+    function resetRound() {
+      player.hp = 100;
+      player.x = 180;
+      player.y = 260;
+      score = 0;
+      gameOver = false;
+      bullets.length = 0;
+      impacts.length = 0;
+      spawnBots();
+    }
+
+    newRoundButton.addEventListener('click', resetRound);
+    levelSelect.addEventListener('change', resetRound);
+
+    resetRound();
+    loop();
+  </script>
+  <script src="../player-system.js"></script>
+  <script src="../music-system.js"></script>
+</body>
+</html>
+
+
+
+
+

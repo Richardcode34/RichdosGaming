@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../graphics.css" />
+  <title>Tower Commander</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #11253a; color: #eef8ff; font-family: Trebuchet MS, sans-serif; }
+    .shell { width: min(95vw, 900px); text-align: center; }
+    a { color: #9ed8ff; }
+    #map { margin: 10px auto; width: min(94vw, 820px); height: 460px; border: 1px solid #8fc0df; border-radius: 10px; background: linear-gradient(#1a3a58, #102335); position: relative; overflow: hidden; }
+    .enemy, .tower, .path { position: absolute; }
+    .enemy { width: 20px; height: 20px; border-radius: 999px; background: #ff9a8f; }
+    .tower { width: 26px; height: 26px; border-radius: 6px; background: #71d8ff; border: 1px solid #d2f3ff; }
+    .path { background: rgba(255,255,255,.12); }
+    button, select { border: 1px solid #97c6e4; border-radius: 8px; background: #275074; color: #eef9ff; padding: 8px 10px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p><a href="../index.html">Home</a> | <a href="../page-3-puzzle.html">P3 Puzzle</a> | <a href="../page-6-party.html">P6 Party</a></p>
+    <h1>Tower Commander</h1>
+    <p>Strategy game: place towers to stop enemy waves.</p>
+    <p>
+      Level:
+      <select id="level">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button id="addTower" type="button">Place Tower (40)</button>
+      <button id="newGame" type="button">New Game</button>
+    </p>
+    <div id="map"></div>
+    <p id="hud"></p>
+  </div>
+  <script>
+    const map = document.getElementById('map');
+    const hud = document.getElementById('hud');
+    const levelSelect = document.getElementById('level');
+    const addTowerButton = document.getElementById('addTower');
+    const newGameButton = document.getElementById('newGame');
+
+    const levels = {
+      easy: { spawnEvery: 85, enemyHp: 2, enemySpeed: 1.1 },
+      medium: { spawnEvery: 65, enemyHp: 3, enemySpeed: 1.4 },
+      hard: { spawnEvery: 48, enemyHp: 4, enemySpeed: 1.7 }
+    };
+
+    const pathPoints = [
+      { x: -20, y: 220 },
+      { x: 180, y: 220 },
+      { x: 180, y: 110 },
+      { x: 430, y: 110 },
+      { x: 430, y: 330 },
+      { x: 680, y: 330 },
+      { x: 680, y: 190 },
+      { x: 860, y: 190 }
+    ];
+
+    let enemies = [];
+    let towers = [];
+    let shots = [];
+    let tick = 0;
+    let gold = 120;
+    let hp = 10;
+    let score = 0;
+    let over = false;
+
+    function cfg() { return levels[levelSelect.value] || levels.medium; }
+
+    function drawPath() {
+      for (let i = 0; i < pathPoints.length - 1; i++) {
+        const a = pathPoints[i];
+        const b = pathPoints[i + 1];
+        const seg = document.createElement('div');
+        seg.className = 'path';
+        seg.style.left = `${Math.min(a.x, b.x)}px`;
+        seg.style.top = `${Math.min(a.y, b.y)}px`;
+        seg.style.width = `${Math.abs(a.x - b.x) || 24}px`;
+        seg.style.height = `${Math.abs(a.y - b.y) || 24}px`;
+        map.appendChild(seg);
+      }
+    }
+
+    function reset() {
+      enemies = [];
+      towers = [];
+      shots = [];
+      tick = 0;
+      gold = 120;
+      hp = 10;
+      score = 0;
+      over = false;
+      map.innerHTML = '';
+      drawPath();
+    }
+
+    function spawnEnemy() {
+      const c = cfg();
+      enemies.push({ x: pathPoints[0].x, y: pathPoints[0].y, hp: c.enemyHp, maxHp: c.enemyHp, speed: c.enemySpeed, seg: 0 });
+    }
+
+    function placeTower() {
+      if (over || gold < 40) return;
+      const tx = 80 + Math.random() * 640;
+      const ty = 60 + Math.random() * 320;
+      towers.push({ x: tx, y: ty, cd: 0, range: 125 });
+      gold -= 40;
+    }
+
+    function moveEnemies() {
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        const next = pathPoints[e.seg + 1];
+        if (!next) {
+          enemies.splice(i, 1);
+          hp -= 1;
+          if (hp <= 0) over = true;
+          continue;
+        }
+        const dx = next.x - e.x;
+        const dy = next.y - e.y;
+        const d = Math.hypot(dx, dy) || 1;
+        e.x += (dx / d) * e.speed;
+        e.y += (dy / d) * e.speed;
+        if (d < 8) e.seg += 1;
+      }
+    }
+
+    function towersAttack() {
+      for (const t of towers) {
+        if (t.cd > 0) {
+          t.cd -= 1;
+          continue;
+        }
+        let target = null;
+        for (const e of enemies) {
+          if (Math.hypot(e.x - t.x, e.y - t.y) <= t.range) {
+            target = e;
+            break;
+          }
+        }
+        if (!target) continue;
+        shots.push({ x: t.x + 13, y: t.y + 13, tx: target.x + 10, ty: target.y + 10, life: 12, target });
+        t.cd = 22;
+      }
+    }
+
+    function updateShots() {
+      for (let i = shots.length - 1; i >= 0; i--) {
+        const s = shots[i];
+        s.life -= 1;
+        if (s.life <= 0 || !s.target) {
+          shots.splice(i, 1);
+          continue;
+        }
+        if (Math.hypot((s.target.x + 10) - s.x, (s.target.y + 10) - s.y) < 10) {
+          s.target.hp -= 1;
+          shots.splice(i, 1);
+          continue;
+        }
+        s.x += ((s.target.x + 10) - s.x) * 0.32;
+        s.y += ((s.target.y + 10) - s.y) * 0.32;
+      }
+
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        if (enemies[i].hp <= 0) {
+          enemies.splice(i, 1);
+          score += 12;
+          gold += 10;
+        }
+      }
+    }
+
+    function render() {
+      map.querySelectorAll('.enemy,.tower,.shot').forEach(n => n.remove());
+
+      for (const t of towers) {
+        const el = document.createElement('div');
+        el.className = 'tower';
+        el.style.left = `${t.x}px`;
+        el.style.top = `${t.y}px`;
+        map.appendChild(el);
+      }
+
+      for (const e of enemies) {
+        const el = document.createElement('div');
+        el.className = 'enemy';
+        el.style.left = `${e.x}px`;
+        el.style.top = `${e.y}px`;
+        map.appendChild(el);
+      }
+
+      for (const s of shots) {
+        const el = document.createElement('div');
+        el.className = 'shot';
+        el.style.position = 'absolute';
+        el.style.left = `${s.x}px`;
+        el.style.top = `${s.y}px`;
+        el.style.width = '6px';
+        el.style.height = '6px';
+        el.style.borderRadius = '999px';
+        el.style.background = '#ffe18a';
+        map.appendChild(el);
+      }
+
+      hud.textContent = over
+        ? `Game Over (${levelSelect.value}). Score: ${score}`
+        : `Level: ${levelSelect.value} | Score: ${score} | Base HP: ${hp} | Gold: ${gold}`;
+    }
+
+    function loop() {
+      if (!over) {
+        tick += 1;
+        if (tick % cfg().spawnEvery === 0) spawnEnemy();
+        moveEnemies();
+        towersAttack();
+        updateShots();
+      }
+      render();
+      requestAnimationFrame(loop);
+    }
+
+    addTowerButton.addEventListener('click', placeTower);
+    newGameButton.addEventListener('click', reset);
+    levelSelect.addEventListener('change', reset);
+
+    reset();
+    loop();
+  </script>
+  <script src="../player-system.js"></script>
+  <script src="../music-system.js"></script>
+</body>
+</html>

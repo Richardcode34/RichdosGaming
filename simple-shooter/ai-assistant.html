@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="graphics.css" />
+  <title>AI Assistant - Richdos Gaming</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .chat-wrap{display:grid;gap:10px}
+    .chat-log{min-height:320px;max-height:52vh;overflow:auto;border:1px solid rgba(167,224,255,.36);border-radius:12px;padding:10px;background:rgba(7,18,31,.7)}
+    .msg{padding:8px 10px;border-radius:10px;margin:6px 0;line-height:1.35}
+    .msg.user{background:rgba(85,196,255,.25);border:1px solid rgba(85,196,255,.38)}
+    .msg.ai{background:rgba(151,255,209,.2);border:1px solid rgba(151,255,209,.32)}
+    .chat-row{display:flex;gap:8px}
+    .chat-row input{flex:1}
+  </style>
+</head>
+<body>
+  <main class="hub">
+    <header class="hero">
+      <p class="brand">Richdos Gaming Website</p>
+      <h1>AI Assistant</h1>
+      <p class="tag">Use this helper when mods/helpers are offline.</p>
+    </header>
+
+    <section class="about">
+      <h2>Quick Links</h2>
+      <p>
+        <a href="index.html">Home</a> |
+        <a href="account.html">Account</a> |
+        <a href="shop.html">Shop</a> |
+        <a href="inventory.html">Inventory</a> |
+        <a href="updates.html">Updates</a>
+      </p>
+      <p id="aiSummary">Loading assistant...</p>
+    </section>
+
+    <section class="about stack">
+      <article class="mini-card chat-wrap">
+        <h2>Ask For Help</h2>
+        <div id="chatLog" class="chat-log"></div>
+        <div class="chat-row">
+          <input id="chatInput" class="input" type="text" maxlength="240" placeholder="Ask about trading, rooms, shop, locks, streaks..." />
+          <button id="sendBtn" class="btn" type="button">Send</button>
+        </div>
+      </article>
+
+      <article class="mini-card">
+        <h2>Quick Help Buttons</h2>
+        <div class="glass-strip">
+          <button class="btn" data-q="How do I join multiplayer?">Multiplayer</button>
+          <button class="btn" data-q="How do I open crates?">Crates</button>
+          <button class="btn" data-q="How to trade with friends?">Trading</button>
+          <button class="btn" data-q="How do locked games unlock?">Locked Games</button>
+          <button class="btn" data-q="How to contact admin?">Admin Help</button>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script src="player-system.js"></script>
+  <script>
+    const log = document.getElementById('chatLog');
+
+    function addMsg(text, who) {
+      const div = document.createElement('div');
+      div.className = 'msg ' + (who === 'user' ? 'user' : 'ai');
+      div.textContent = text;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function aiReply(q) {
+      const t = String(q || '').toLowerCase();
+      if (t.includes('multiplayer') || t.includes('room')) {
+        return 'Go to Account page, join/create a room code, then open multiplayer-only games from Home. They show live room leaderboard while playing.';
+      }
+      if (t.includes('crate') || t.includes('inventory')) {
+        return 'Buy crates in Shop, then open Inventory page and click Open Crate. First crate purchase also gives this instruction automatically.';
+      }
+      if (t.includes('trade') || t.includes('friend')) {
+        return 'Add friends first, then use trade panel to send credits/tokens/keys/items. Trade value shows before confirming.';
+      }
+      if (t.includes('locked') || t.includes('unlock') || t.includes('points') || t.includes('credits')) {
+        return 'Locked games can require streak, credits, rank points, or crate keys. The lock card tells exactly what is missing.';
+      }
+      if (t.includes('ban') || t.includes('admin') || t.includes('moderat')) {
+        return 'Owner/admin/mod controls are in Account moderation panel. Include clear reason and duration when banning.';
+      }
+      if (t.includes('streak')) {
+        return 'Open Streak page daily. Day 7 gives a profile reward (first week), day 14 unlocks Grinder rank.';
+      }
+      return 'I can help with rooms, shop, inventory, crates, streaks, friends, and trading. Try asking one of those directly.';
+    }
+
+    async function init() {
+      await RGW.syncCurrentAccountFromLan();
+      const me = RGW.getAccount();
+      document.getElementById('aiSummary').textContent = `AI helper online for ${me.username}.`; 
+      addMsg('Hi! I am your assistant when helpers are offline. Ask anything about the website systems.', 'ai');
+    }
+
+    function send() {
+      const input = document.getElementById('chatInput');
+      const q = input.value.trim();
+      if (!q) return;
+      addMsg(q, 'user');
+      input.value = '';
+      const r = aiReply(q);
+      setTimeout(() => addMsg(r, 'ai'), 180);
+    }
+
+    document.getElementById('sendBtn').addEventListener('click', send);
+    document.getElementById('chatInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') send();
+    });
+    document.querySelectorAll('button[data-q]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('chatInput').value = btn.getAttribute('data-q');
+        send();
+      });
+    });
+
+    init();
+  </script>
+  <script src="music-system.js"></script>
+</body>
+</html>

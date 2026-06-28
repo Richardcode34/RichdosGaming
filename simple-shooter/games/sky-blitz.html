@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../graphics.css" />
+  <title>Sky Blitz</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #081a2b; color: #eef8ff; font-family: Trebuchet MS, sans-serif; }
+    .shell { width: min(92vw, 760px); text-align: center; }
+    a { color: #9ed8ff; }
+    canvas { border: 1px solid #7fb1d1; border-radius: 10px; background: linear-gradient(#102843, #0a1728); }
+    select, button { border: 1px solid #94c3e0; border-radius: 8px; background: #1e466a; color: #eef9ff; padding: 6px 10px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p><a href="../index.html">Home</a> | <a href="../page-1-shooting.html">P1 Shooting</a> | <a href="../page-2-racing.html">P2 Racing</a> | <a href="../page-3-puzzle.html">P3 Puzzle</a> | <a href="../page-4-arcade.html">P4 Arcade</a> | <a href="../page-5-realistic.html">P5 Realistic</a> | <a href="../page-6-party.html">P6 Party</a></p>
+    <h1>Sky Blitz</h1>
+    <p>Shoot falling drones. Move Left/Right, shoot with Space, restart with R.</p>
+    <p>
+      Level:
+      <select id="level">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button id="newGame" type="button">New Game</button>
+    </p>
+    <canvas id="c" width="700" height="460"></canvas>
+    <p id="hud"></p>
+  </div>
+  <script>
+    const c = document.getElementById('c');
+    const g = c.getContext('2d');
+    const hud = document.getElementById('hud');
+    const levelSelect = document.getElementById('level');
+    const newGameButton = document.getElementById('newGame');
+
+    const levels = {
+      easy: { spawnEvery: 55, droneSpeed: 1.4, droneHp: 1 },
+      medium: { spawnEvery: 40, droneSpeed: 2, droneHp: 2 },
+      hard: { spawnEvery: 28, droneSpeed: 2.8, droneHp: 3 }
+    };
+
+    const keys = { l: false, r: false, shoot: false };
+    const player = { x: 350, y: 410, w: 42, h: 26, cd: 0 };
+    const bullets = [];
+    const drones = [];
+
+    let score = 0;
+    let gameOver = false;
+    let tick = 0;
+
+    function currentLevel() { return levels[levelSelect.value] || levels.medium; }
+
+    function reset() {
+      score = 0;
+      gameOver = false;
+      tick = 0;
+      bullets.length = 0;
+      drones.length = 0;
+      player.x = 350;
+      player.cd = 0;
+    }
+
+    function hit(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function spawnDrone() {
+      const level = currentLevel();
+      drones.push({ x: Math.random() * (c.width - 36), y: -26, w: 36, h: 24, hp: level.droneHp, v: level.droneSpeed + Math.random() * 1.2 });
+    }
+
+    function update() {
+      if (gameOver) return;
+      const level = currentLevel();
+
+      if (keys.l) player.x -= 5;
+      if (keys.r) player.x += 5;
+      player.x = Math.max(0, Math.min(c.width - player.w, player.x));
+
+      if (keys.shoot && player.cd <= 0) {
+        bullets.push({ x: player.x + player.w / 2 - 2, y: player.y - 8, w: 4, h: 10, v: 7 });
+        player.cd = 10;
+      }
+      if (player.cd > 0) player.cd -= 1;
+
+      tick += 1;
+      if (tick % level.spawnEvery === 0) spawnDrone();
+
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        bullets[i].y -= bullets[i].v;
+        if (bullets[i].y < -20) bullets.splice(i, 1);
+      }
+
+      for (let i = drones.length - 1; i >= 0; i--) {
+        const d = drones[i];
+        d.y += d.v;
+        if (d.y > c.height) {
+          gameOver = true;
+          continue;
+        }
+
+        if (hit({ x: player.x, y: player.y, w: player.w, h: player.h }, d)) {
+          gameOver = true;
+          continue;
+        }
+
+        for (let j = bullets.length - 1; j >= 0; j--) {
+          if (hit(bullets[j], d)) {
+            bullets.splice(j, 1);
+            d.hp -= 1;
+            if (d.hp <= 0) {
+              drones.splice(i, 1);
+              score += 10;
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    function draw() {
+      g.clearRect(0, 0, c.width, c.height);
+      g.fillStyle = '#6ad9ff';
+      g.fillRect(player.x, player.y, player.w, player.h);
+      g.fillStyle = '#ffd27b';
+      for (const b of bullets) g.fillRect(b.x, b.y, b.w, b.h);
+      g.fillStyle = '#ff8f92';
+      for (const d of drones) g.fillRect(d.x, d.y, d.w, d.h);
+
+      hud.textContent = gameOver
+        ? `Game Over (${levelSelect.value}). Score: ${score}. Press R or New Game.`
+        : `Level: ${levelSelect.value} | Score: ${score}`;
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    addEventListener('keydown', e => {
+      if (e.code === 'ArrowLeft') keys.l = true;
+      if (e.code === 'ArrowRight') keys.r = true;
+      if (e.code === 'Space') { keys.shoot = true; e.preventDefault(); }
+      if (e.code === 'KeyR') reset();
+    });
+
+    addEventListener('keyup', e => {
+      if (e.code === 'ArrowLeft') keys.l = false;
+      if (e.code === 'ArrowRight') keys.r = false;
+      if (e.code === 'Space') { keys.shoot = false; e.preventDefault(); }
+    });
+
+    levelSelect.addEventListener('change', reset);
+    newGameButton.addEventListener('click', reset);
+
+    reset();
+    loop();
+  </script>
+  <script src="../player-system.js"></script>
+  <script src="../music-system.js"></script>
+</body>
+</html>
+
+
+
+
+

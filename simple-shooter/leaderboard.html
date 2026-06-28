@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="graphics.css" />
+  <title>Leaderboard - Richdos Gaming</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="hub">
+    <header class="hero">
+      <p class="brand">Richdos Gaming Website</p>
+      <h1>Leaderboard</h1>
+      <p class="tag">Track who plays the most and who scores the highest.</p>
+    </header>
+
+    <section class="about">
+      <h2>Global Rankings</h2>
+      <p><a href="index.html">Home</a> | <a href="account.html">Account</a> | <a href="shop.html">Shop</a> | <a href="streak.html">🔥 Streak</a></p>
+      <p id="modeNote">Mode: loading...</p>
+
+      <div class="glass-strip" role="group" aria-label="Leaderboard controls">
+        <span class="pill">Live Rank Board</span>
+        <input id="searchInput" class="input" type="search" placeholder="Find player" maxlength="24" />
+        <select id="sortSelect" class="select">
+          <option value="points">Sort: Rank Points</option>
+          <option value="credits">Sort: Credits</option>
+          <option value="score">Sort: Total Score</option>
+          <option value="plays">Sort: Total Plays</option>
+          <option value="best">Sort: Best Score</option>
+          <option value="name">Sort: Player Name</option>
+        </select>
+        <button id="refreshBtn" type="button" class="btn">Refresh</button>
+      </div>
+
+      <div class="stats-grid" id="summaryCards" aria-live="polite"></div>
+      <div id="podium" class="podium" aria-live="polite"></div>
+      <div id="creditsPodium" class="podium" aria-live="polite"></div>
+      <p id="lastUpdate" class="tag">Updated: --</p>
+
+      <div class="board-wrap">
+        <table class="board">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Player</th>
+              <th>Role</th>
+              <th>Power Role</th>
+              <th>Rank</th>
+              <th>Rank Points</th>
+              <th>Credits</th>
+              <th>Level</th>
+              <th>Total Plays</th>
+              <th>Total Score</th>
+              <th>Best Score</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="player-system.js"></script>
+  <script>
+    const rows = document.getElementById('rows');
+    const modeNote = document.getElementById('modeNote');
+    const searchInput = document.getElementById('searchInput');
+    const sortSelect = document.getElementById('sortSelect');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const summaryCards = document.getElementById('summaryCards');
+    const podium = document.getElementById('podium');
+    const creditsPodium = document.getElementById('creditsPodium');
+    const lastUpdate = document.getElementById('lastUpdate');
+
+    const medals = ['🥇', '🥈', '🥉'];
+    let allPlayers = [];
+
+    function asNum(v) {
+      return Math.max(0, Number(v) || 0);
+    }
+
+    function fmt(v) {
+      return Number(v || 0).toLocaleString();
+    }
+
+    function isPrivilegedPlayer(p) {
+      const name = String((p && p.username) || '').trim();
+      const role = String((p && p.role) || '').toLowerCase();
+      if (role === 'owner' || role === 'admin' || role === 'helper') return true;
+      if (name && (RGW.isOwnerUser(name) || RGW.isAdminUser(name) || RGW.isHelperUser(name))) return true;
+      return false;
+    }
+
+    function updateSummary(players) {
+      const totalPlayers = players.length;
+      const totalPlays = players.reduce((sum, p) => sum + asNum(p.totalPlays), 0);
+      const totalScore = players.reduce((sum, p) => sum + asNum(p.totalScore), 0);
+      const totalPoints = players.reduce((sum, p) => sum + asNum(p.rankPoints), 0);
+      const totalCredits = players.reduce((sum, p) => sum + asNum(p.credits), 0);
+      const top = players[0] ? players[0].username : '-';
+
+      summaryCards.innerHTML = [
+        ['Players', fmt(totalPlayers)],
+        ['Rank Points', fmt(totalPoints)],
+        ['Credits', fmt(totalCredits)],
+        ['Total Plays', fmt(totalPlays)],
+        ['Score Pool', fmt(totalScore)],
+        ['Current #1', top]
+      ].map(([k, v]) => `<article class="stat-card"><p class="stat-k">${k}</p><p class="stat-v">${v}</p></article>`).join('');
+
+      const top3 = players.slice(0, 3);
+      if (!top3.length) {
+        podium.innerHTML = '';
+      } else {
+        const labels = ['#1 Champion', '#2 Elite', '#3 Contender'];
+        podium.innerHTML = top3.map((p, i) => {
+          return `<article class="podium-card podium-card--${i + 1}"><p class="podium-rank">${labels[i]}</p><p class="podium-name">${p.username || 'Unknown'}</p><p class="podium-score">Score ${fmt(asNum(p.totalScore))} · Best ${fmt(asNum(p.bestScore))}</p></article>`;
+        }).join('');
+      }
+
+      const topCredits = [...players]
+        .sort((a, b) => asNum(b.credits) - asNum(a.credits) || asNum(b.rankPoints) - asNum(a.rankPoints))
+        .slice(0, 3);
+      if (!topCredits.length) {
+        creditsPodium.innerHTML = '';
+      } else {
+        const labels = ['#1 Credit King', '#2 Big Saver', '#3 Rich Grinder'];
+        creditsPodium.innerHTML = topCredits.map((p, i) => {
+          return `<article class="podium-card"><p class="podium-rank">${labels[i]}</p><p class="podium-name">${p.username || 'Unknown'}</p><p class="podium-score">Credits ${fmt(asNum(p.credits))} · Points ${fmt(asNum(p.rankPoints))}</p></article>`;
+        }).join('');
+      }
+    }
+
+    function getPowerRoleMap(players) {
+      const qualified = [...players]
+        .filter(p => asNum(p.rankPoints) >= 400)
+        .sort((a, b) => asNum(b.rankPoints) - asNum(a.rankPoints) || asNum(b.credits) - asNum(a.credits));
+
+      const map = new Map();
+      const titles = [
+        { name: 'DARK LORD', cls: 'power-role-dark-lord' },
+        { name: 'ULTIMATE VESSEL', cls: 'power-role-ultimate-vessel' },
+        { name: '???', cls: 'power-role-unknown' }
+      ];
+
+      for (let i = 0; i < Math.min(3, qualified.length); i += 1) {
+        map.set(String(qualified[i].username || ''), titles[i]);
+      }
+      return map;
+    }
+
+    function sortPlayers(players) {
+      const mode = sortSelect.value;
+      const out = [...players];
+      if (mode === 'plays') {
+        out.sort((a, b) => asNum(b.totalPlays) - asNum(a.totalPlays) || asNum(b.totalScore) - asNum(a.totalScore));
+      } else if (mode === 'points') {
+        out.sort((a, b) => asNum(b.rankPoints) - asNum(a.rankPoints) || asNum(b.totalScore) - asNum(a.totalScore));
+      } else if (mode === 'credits') {
+        out.sort((a, b) => asNum(b.credits) - asNum(a.credits) || asNum(b.rankPoints) - asNum(a.rankPoints));
+      } else if (mode === 'best') {
+        out.sort((a, b) => asNum(b.bestScore) - asNum(a.bestScore) || asNum(b.totalScore) - asNum(a.totalScore));
+      } else if (mode === 'name') {
+        out.sort((a, b) => String(a.username || '').localeCompare(String(b.username || '')));
+      } else {
+        out.sort((a, b) => asNum(b.totalScore) - asNum(a.totalScore) || asNum(b.totalPlays) - asNum(a.totalPlays));
+      }
+      return out;
+    }
+
+    function renderRows() {
+      const q = (searchInput.value || '').trim().toLowerCase();
+      const current = RGW.getCurrentUsername();
+      const sorted = sortPlayers(allPlayers);
+      const filtered = q ? sorted.filter(p => String(p.username || '').toLowerCase().includes(q)) : sorted;
+
+      updateSummary(sorted);
+
+      if (!filtered.length) {
+        rows.innerHTML = '<tr><td colspan="11">No matching players found.</td></tr>';
+        return;
+      }
+
+      const powerRoleMap = getPowerRoleMap(sorted);
+
+      rows.innerHTML = filtered.map((p, i) => {
+        const rank = i + 1;
+        const me = current && p.username === current;
+        const rankLabel = medals[i] ? `<span class="rank-medal">${medals[i]}</span>${rank}` : String(rank);
+        const rowClass = `${me ? 'row-me' : ''} ${i < 3 ? 'row-top' : ''}`.trim();
+        const isOwner = RGW.isOwnerUser(p.username || '');
+        const isAdmin = RGW.isAdminUser(p.username || '');
+        const roleCell = isOwner
+          ? '<strong>🔥 Owner</strong>'
+          : (isAdmin ? '<strong>👑 Admin</strong>' : 'Player');
+        const powerRole = powerRoleMap.get(String(p.username || ''));
+        const powerRoleCell = powerRole
+          ? `<span class="power-role-pill ${powerRole.cls}">${powerRole.name}</span>`
+          : '<span class="power-role-pill power-role-none">-</span>';
+        const rankPoints = asNum(p.rankPoints);
+        const tier = p.rankName || RGW.rankFromPoints(rankPoints);
+        const credits = asNum(p.credits);
+        const level = asNum(p.level) || RGW.levelFromPoints(rankPoints);
+        return `<tr class="${rowClass}"><td class="rank">${rankLabel}</td><td>${p.username || 'Unknown'}</td><td>${roleCell}</td><td>${powerRoleCell}</td><td>${tier}</td><td>${fmt(rankPoints)}</td><td>${fmt(credits)}</td><td>${fmt(level)}</td><td>${fmt(asNum(p.totalPlays))}</td><td>${fmt(asNum(p.totalScore))}</td><td>${fmt(asNum(p.bestScore))}</td></tr>`;
+      }).join('');
+    }
+
+    async function loadBoard() {
+      const players = await RGW.getLeaderboardArray();
+      allPlayers = (Array.isArray(players) ? players : []).filter(p => !isPrivilegedPlayer(p));
+      lastUpdate.textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+      const isLan = location.protocol === 'http:' || location.protocol === 'https:';
+      modeNote.textContent = isLan
+        ? 'Mode: Shared LAN leaderboard active for all devices on this server.'
+        : 'Mode: Local only. Open through LAN server URL to share rankings.';
+
+      if (!allPlayers.length) {
+        rows.innerHTML = '<tr><td colspan="11">No players yet. Start any game to create stats.</td></tr>';
+        updateSummary([]);
+        return;
+      }
+
+      renderRows();
+    }
+
+    searchInput.addEventListener('input', renderRows);
+    sortSelect.addEventListener('change', renderRows);
+    refreshBtn.addEventListener('click', loadBoard);
+
+    loadBoard();
+  </script>
+  <script src="music-system.js"></script>
+</body>
+</html>
+
+

@@ -1,0 +1,1 @@
+Start-Process "D:\simple-shooter\index.html"

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multiplayer Drift Duel</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(circle at 50% 0,#ffaf4e,#1c0d1f 66%);font-family:Segoe UI,sans-serif;color:#fff1db;overflow:hidden}
+    #hud{position:fixed;left:12px;top:12px;background:rgba(35,12,6,.74);padding:8px 10px;border-radius:10px;border:1px solid rgba(255,198,145,.45);font-weight:700}
+    #roomBoard{position:fixed;right:12px;top:12px;width:220px;background:rgba(35,12,6,.74);padding:10px;border-radius:10px;border:1px solid rgba(255,198,145,.45)}
+    #roomRows{margin:0;padding-left:16px;max-height:260px;overflow:auto}
+    #track{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(88vw,760px);height:min(82vh,560px);border:4px solid rgba(255,215,161,.8);border-radius:50%;box-shadow:0 0 50px rgba(255,196,122,.35) inset}
+    #car{position:absolute;width:18px;height:34px;background:linear-gradient(180deg,#fff2c3,#ff8f3f);border-radius:6px}
+    @media (max-width:860px){
+      #roomBoard{right:8px;top:auto;bottom:10px;width:min(260px,92vw);padding:8px}
+      #roomRows{max-height:160px}
+      #hud{left:8px;top:8px;font-size:12px}
+      #track{width:min(96vw,760px);height:min(74vh,560px)}
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">Room: -- | Score: 0 | Time: 70</div>
+  <aside id="roomBoard"><h3>Room Leaderboard</h3><ol id="roomRows"></ol></aside>
+  <div id="track"><div id="car"></div></div>
+
+  <script src="../player-system.js"></script>
+  <script>
+    const GAME_ID='multiplayer-drift-duel';
+    const room = RGW.getCurrentRoomCode() || new URLSearchParams(location.search).get('room') || '';
+    const rows=document.getElementById('roomRows');
+    const hud=document.getElementById('hud');
+    const track=document.getElementById('track');
+    const car=document.getElementById('car');
+    let score=0,timeLeft=70,alive=true,angle=0,drift=0;
+    const keys={};
+
+    if(!room){
+      alert('Join a room first from Account page.');
+      location.href='../account.html';
+    } else {
+      RGW.setCurrentRoomCode(room);
+    }
+
+    document.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
+    document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+    function renderCar(){
+      const r=Math.min(track.clientWidth,track.clientHeight)*0.36;
+      const cx=track.clientWidth/2;
+      const cy=track.clientHeight/2;
+      const x=cx + Math.cos(angle)*r;
+      const y=cy + Math.sin(angle)*r;
+      car.style.left=(x-9)+'px';
+      car.style.top=(y-17)+'px';
+      car.style.transform=`rotate(${angle*57.2958+90}deg)`;
+    }
+
+    window.addEventListener('resize',()=>{
+      renderCar();
+    });
+
+    function gameLoop(){
+      if(!alive) return;
+      const left=keys['a']||keys['arrowleft'];
+      const right=keys['d']||keys['arrowright'];
+      if(left) drift=Math.max(-0.055,drift-0.0022);
+      if(right) drift=Math.min(0.055,drift+0.0022);
+      drift*=0.97;
+      angle += 0.06 + drift;
+      score += Math.max(1,Math.floor(Math.abs(drift)*130));
+      renderCar();
+      requestAnimationFrame(gameLoop);
+    }
+
+    async function syncBoard(){
+      if(!alive) return;
+      await RGW.submitRoomScore(GAME_ID, score, room);
+      const board = await RGW.getRoomLeaderboard(GAME_ID, room);
+      const items = (board && board.scores) ? board.scores : [];
+      if(!items.length){ rows.innerHTML='<li>Waiting for players...</li>'; return; }
+      rows.innerHTML = items.slice(0,8).map(r=>`<li>${r.username}: ${r.score}</li>`).join('');
+    }
+
+    setInterval(()=>{
+      if(!alive) return;
+      timeLeft -= 1;
+      hud.textContent=`Room: ${room} | Score: ${score} | Time: ${timeLeft}`;
+      if(timeLeft<=0){
+        alive=false;
+        hud.textContent=`Game Over | Score: ${score}`;
+      }
+    },1000);
+    setInterval(syncBoard,1600);
+
+    renderCar();
+    gameLoop();
+    hud.textContent=`Room: ${room} | Score: ${score} | Time: ${timeLeft}`;
+  </script>
+</body>
+</html>

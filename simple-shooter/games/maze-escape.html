@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../graphics.css" />
+  <title>Maze Escape</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0c1d30; color: #eef8ff; font-family: Trebuchet MS, sans-serif; }
+    .shell { width: min(92vw, 760px); text-align: center; }
+    a { color: #9ed8ff; }
+    #board { margin: 10px auto; display: grid; gap: 2px; justify-content: center; }
+    .cell { width: 24px; height: 24px; border-radius: 4px; background: #213c58; }
+    .wall { background: #0f2134; }
+    .player { background: #67dca7; }
+    .goal { background: #ffd37e; }
+    .enemy { background: #ff8f90; }
+    select, button { border: 1px solid #8fbfe0; border-radius: 8px; background: #1d4468; color: #eef9ff; padding: 6px 10px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p><a href="../index.html">Home</a> | <a href="../page-1-shooting.html">P1 Shooting</a> | <a href="../page-2-racing.html">P2 Racing</a> | <a href="../page-3-puzzle.html">P3 Puzzle</a> | <a href="../page-4-arcade.html">P4 Arcade</a> | <a href="../page-5-realistic.html">P5 Realistic</a> | <a href="../page-6-party.html">P6 Party</a></p>
+    <h1>Maze Escape</h1>
+    <p>Reach the goal before enemies catch you. Move with Arrow keys.</p>
+    <p>
+      Level:
+      <select id="level">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button id="newGame" type="button">New Game</button>
+    </p>
+    <div id="board"></div>
+    <p id="hud"></p>
+  </div>
+  <script>
+    const board = document.getElementById('board');
+    const hud = document.getElementById('hud');
+    const levelSelect = document.getElementById('level');
+    const newGameButton = document.getElementById('newGame');
+
+    const levels = {
+      easy: { size: 12, enemies: 1 },
+      medium: { size: 14, enemies: 2 },
+      hard: { size: 16, enemies: 3 }
+    };
+
+    let size = 14;
+    let walls = new Set();
+    let player = { x: 1, y: 1 };
+    let goal = { x: 12, y: 12 };
+    let enemies = [];
+    let over = false;
+    let won = false;
+
+    function key(x, y) { return `${x},${y}`; }
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function inBounds(x, y) {
+      return x >= 0 && y >= 0 && x < size && y < size;
+    }
+
+    function buildMaze() {
+      const cfg = levels[levelSelect.value] || levels.medium;
+      size = cfg.size;
+      walls = new Set();
+
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          if (x === 0 || y === 0 || x === size - 1 || y === size - 1) {
+            walls.add(key(x, y));
+          } else if (Math.random() < 0.19) {
+            walls.add(key(x, y));
+          }
+        }
+      }
+
+      player = { x: 1, y: 1 };
+      goal = { x: size - 2, y: size - 2 };
+      walls.delete(key(player.x, player.y));
+      walls.delete(key(goal.x, goal.y));
+
+      enemies = [];
+      for (let i = 0; i < cfg.enemies; i++) {
+        let ex = randomInt(2, size - 3);
+        let ey = randomInt(2, size - 3);
+        while (walls.has(key(ex, ey)) || (ex === player.x && ey === player.y) || (ex === goal.x && ey === goal.y)) {
+          ex = randomInt(2, size - 3);
+          ey = randomInt(2, size - 3);
+        }
+        enemies.push({ x: ex, y: ey });
+      }
+
+      over = false;
+      won = false;
+      draw();
+    }
+
+    function movePlayer(dx, dy) {
+      if (over) return;
+      const nx = player.x + dx;
+      const ny = player.y + dy;
+      if (!inBounds(nx, ny) || walls.has(key(nx, ny))) return;
+      player.x = nx;
+      player.y = ny;
+
+      if (player.x === goal.x && player.y === goal.y) {
+        over = true;
+        won = true;
+        draw();
+        return;
+      }
+
+      moveEnemies();
+      draw();
+    }
+
+    function moveEnemies() {
+      for (const e of enemies) {
+        const options = [
+          { x: e.x + 1, y: e.y },
+          { x: e.x - 1, y: e.y },
+          { x: e.x, y: e.y + 1 },
+          { x: e.x, y: e.y - 1 }
+        ].filter(p => inBounds(p.x, p.y) && !walls.has(key(p.x, p.y)));
+
+        if (!options.length) continue;
+
+        options.sort((a, b) => {
+          const da = Math.abs(a.x - player.x) + Math.abs(a.y - player.y);
+          const db = Math.abs(b.x - player.x) + Math.abs(b.y - player.y);
+          return da - db;
+        });
+
+        const pick = Math.random() < 0.7 ? options[0] : options[randomInt(0, options.length - 1)];
+        e.x = pick.x;
+        e.y = pick.y;
+
+        if (e.x === player.x && e.y === player.y) {
+          over = true;
+          won = false;
+        }
+      }
+    }
+
+    function draw() {
+      board.style.gridTemplateColumns = `repeat(${size}, 24px)`;
+      board.innerHTML = '';
+
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          if (walls.has(key(x, y))) cell.classList.add('wall');
+          if (x === goal.x && y === goal.y) cell.classList.add('goal');
+          if (x === player.x && y === player.y) cell.classList.add('player');
+          if (enemies.some(e => e.x === x && e.y === y)) cell.classList.add('enemy');
+          board.appendChild(cell);
+        }
+      }
+
+      if (!over) {
+        hud.textContent = `Level: ${levelSelect.value} | Reach the gold tile and avoid red enemies.`;
+      } else if (won) {
+        hud.textContent = `You escaped (${levelSelect.value})! Press New Game to play again.`;
+      } else {
+        hud.textContent = `Caught (${levelSelect.value})! Press New Game to retry.`;
+      }
+    }
+
+    addEventListener('keydown', e => {
+      if (e.code === 'ArrowUp') movePlayer(0, -1);
+      if (e.code === 'ArrowDown') movePlayer(0, 1);
+      if (e.code === 'ArrowLeft') movePlayer(-1, 0);
+      if (e.code === 'ArrowRight') movePlayer(1, 0);
+      if (e.code === 'KeyR') buildMaze();
+    });
+
+    newGameButton.addEventListener('click', buildMaze);
+    levelSelect.addEventListener('change', buildMaze);
+
+    buildMaze();
+  </script>
+  <script src="../player-system.js"></script>
+  <script src="../music-system.js"></script>
+</body>
+</html>
+
+
+
+
+
