@@ -1,14 +1,15 @@
 ﻿{
     "Guest":  {
                   "username":  "Guest",
-                  "createdAt":  "2026-06-28T11:11:41.582Z",
-                  "lastSeen":  "2026-06-28T11:30:05.174Z",
+                  "createdAt":  "2026-06-28T21:42:22.115Z",
+                  "lastSeen":  "2026-06-29T05:40:07.946Z",
                   "totalPlays":  38,
                   "totalScore":  850,
                   "bestScore":  485,
                   "rankPoints":  0,
                   "level":  1,
                   "credits":  0,
+                  "tokens":  0,
                   "rankName":  "Dirt",
                   "role":  "player",
                   "streakCount":  1,
