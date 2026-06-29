@@ -26,6 +26,40 @@
       box-shadow: 0 8px 16px rgba(0, 0, 0, 0.28);
     }
     .genre-launch a:hover { filter: brightness(1.1); }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .feature-tile {
+      border: 2px solid rgba(163, 225, 255, 0.42);
+      border-radius: 14px;
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(21, 58, 79, 0.95), rgba(27, 87, 61, 0.9));
+      box-shadow: 0 12px 22px rgba(0, 0, 0, 0.26);
+    }
+    .feature-tile h3 { margin: 0 0 6px 0; }
+    .feature-tile p { margin: 0 0 10px 0; }
+    .feature-tile button, .feature-tile a {
+      display: inline-block;
+      text-decoration: none;
+      border: 1px solid rgba(205, 244, 255, 0.55);
+      background: rgba(9, 27, 41, 0.82);
+      color: #eefbff;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font: 800 12px Trebuchet MS, sans-serif;
+      cursor: pointer;
+    }
+    .mini-mc {
+      background: linear-gradient(180deg, rgba(120, 179, 79, 0.92), rgba(67, 102, 46, 0.94));
+      border: 3px solid rgba(33, 54, 24, 0.95);
+      box-shadow: 0 8px 0 rgba(28, 47, 21, 0.8);
+    }
+    .mini-party {
+      background: linear-gradient(135deg, rgba(36, 93, 144, 0.95), rgba(255, 166, 76, 0.92));
+    }
   </style>
 </head>
 <body>
@@ -40,6 +74,7 @@
       <h2>Quick Systems</h2>
       <p>
         <a href="account.html">Account</a> |
+        <a href="planets.html">Planets</a> |
         <a href="shop.html">Shop</a> |
         <a href="inventory.html">Inventory</a> |
         <a href="streak.html">Streak</a> |
@@ -55,6 +90,7 @@
       <h2>Games By Genre</h2>
       <p>Use the big buttons below to jump into a genre page fast.</p>
       <div class="genre-launch">
+        <a href="planets.html">Planets / Worlds Hub</a>
         <a href="page-1-shooting.html">Shooting Games</a>
         <a href="page-2-racing.html">Racing Games</a>
         <a href="page-3-puzzle.html">Puzzle / Brain Games</a>
@@ -98,6 +134,32 @@
     </section>
 
     <section class="about">
+      <h2>Locked Games</h2>
+      <p>Unlock special games with streaks, credits, points, or keys.</p>
+      <div id="lockedGamesGrid" class="feature-grid"></div>
+    </section>
+
+    <section class="about">
+      <h2>3D Showcase</h2>
+      <p>Fast access to your 3D games and block-style adventures.</p>
+      <div class="feature-grid">
+        <article class="feature-tile"><h3>Neon Runner 3D</h3><p>Lane dodging, faster pacing, arcade neon style.</p><a href="games/neon-runner-3d.html">Open 3D Runner</a></article>
+        <article class="feature-tile"><h3>Sky Cube Assault 3D</h3><p>Cube combat and elevated arena combat feel.</p><a href="games/sky-cube-assault-3d.html">Open Sky Cube</a></article>
+        <article class="feature-tile mini-mc"><h3>Crystal Tunnel 3D</h3><p>Blocky tunnel run with Minecraft-style energy.</p><a href="games/crystal-tunnel-3d.html">Open Tunnel</a></article>
+      </div>
+    </section>
+
+    <section class="about mini-mc">
+      <h2>Block Worlds Zone</h2>
+      <p>Extra blocky style, Minecraft-like music, and quick links into the voxel side of the site.</p>
+      <div class="feature-grid">
+        <article class="feature-tile mini-mc"><h3>Voxel Builder</h3><p>Creative block world with unlock progression.</p><a href="games/voxel-builder.html">Open Builder</a></article>
+        <article class="feature-tile mini-mc"><h3>Mine Crafter Survival</h3><p>Survival feel with simple resource gameplay.</p><a href="games/mine-crafter-survival.html">Open Survival</a></article>
+        <article class="feature-tile mini-mc"><h3>Miniblox.io</h3><p>External multiplayer sandbox with the right vibe.</p><a href="https://miniblox.io/" target="_blank" rel="noopener noreferrer">Play Miniblox.io</a></article>
+      </div>
+    </section>
+
+    <section class="about">
       <h2>Equipment Controls</h2>
       <p>Use these buttons to equip titles and profile pics, or open unopened crates directly.</p>
     </section>
@@ -110,6 +172,18 @@
         <a id="mpOrbLink" href="account.html">Play Multiplayer Orb Rush</a> |
         <a id="mpDriftLink" href="account.html">Play Multiplayer Drift Duel</a>
       </p>
+      <div class="feature-grid" style="margin-top:10px">
+        <article class="feature-tile mini-party">
+          <h3>Room Creation</h3>
+          <p>Create or join a room in Account, then jump into multiplayer games with shared scoreboards.</p>
+          <a href="account.html">Open Account Room Hub</a>
+        </article>
+        <article class="feature-tile mini-party">
+          <h3>Party Plaza</h3>
+          <p>A Miniblox-style party area with quick local and shared room games.</p>
+          <a href="page-6-party.html">Open Party Plaza</a>
+        </article>
+      </div>
     </section>
 
     <section class="cards" aria-label="Equipment Buttons">
@@ -175,6 +249,24 @@
         orb.href = 'account.html';
         drift.href = 'account.html';
       }
+
+      const lockedGrid = document.getElementById('lockedGamesGrid');
+      const lockedGames = RGW.getLockedGamesCatalog();
+      lockedGrid.innerHTML = lockedGames.map(function (game) {
+        const state = RGW.getGameUnlockState(game.id, user.username);
+        const action = state.unlocked
+          ? `<a href="games/${game.id}.html">Play</a>`
+          : `<button class="btn" data-unlock="${esc(game.id)}">Unlock (${esc(state.requirementText)})</button>`;
+        return `<article class="feature-tile ${game.id.indexOf('3d') >= 0 || game.id.indexOf('voxel') >= 0 ? 'mini-mc' : ''}"><h3>${esc(game.label)}</h3><p>${esc(state.requirementText || 'Unlocked')}</p>${action}</article>`;
+      }).join('');
+      lockedGrid.querySelectorAll('button[data-unlock]').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          const id = btn.getAttribute('data-unlock');
+          const result = RGW.unlockGame(id);
+          document.getElementById('homeStatus').textContent = result.message || '';
+          await renderHomeEquipment();
+        });
+      });
 
       const crateWrap = document.getElementById('crateButtons');
       const crates = Array.isArray(inv.unopenedCrates) ? inv.unopenedCrates : [];

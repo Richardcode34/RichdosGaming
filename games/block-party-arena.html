@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Block Party Arena</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      color: #f7fff8;
+      background:
+        radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.12), transparent 20%),
+        linear-gradient(180deg, #76b2ff 0%, #4d7acc 40%, #5ba85b 40%, #427c3f 100%);
+    }
+    #hud, #board, #tips {
+      position: fixed;
+      z-index: 5;
+      background: rgba(18, 24, 27, 0.76);
+      border: 2px solid rgba(235, 255, 233, 0.24);
+      box-shadow: 0 10px 22px rgba(0,0,0,.28);
+      border-radius: 14px;
+      backdrop-filter: blur(6px);
+    }
+    #hud { left: 12px; top: 12px; padding: 10px 12px; font-weight: 800; }
+    #board { right: 12px; top: 12px; width: 250px; padding: 12px; }
+    #board h3 { margin: 0 0 8px 0; font-size: 15px; }
+    #rows { margin: 0; padding-left: 18px; max-height: 270px; overflow: auto; }
+    #tips { left: 50%; transform: translateX(-50%); top: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; }
+    #arena { position: fixed; inset: 0; }
+    .tile {
+      position: absolute;
+      width: 76px;
+      height: 76px;
+      border: 3px solid rgba(28, 46, 19, 0.85);
+      background:
+        linear-gradient(180deg, rgba(143, 195, 99, 0.98) 0 20%, rgba(111, 78, 53, 0.98) 20% 100%);
+      box-shadow: 0 8px 0 rgba(40, 56, 31, 0.55);
+      cursor: pointer;
+      transition: transform .08s ease, filter .12s ease;
+    }
+    .tile:hover { transform: scale(1.04); filter: brightness(1.05); }
+    .bonus {
+      background:
+        linear-gradient(180deg, rgba(119, 224, 255, 0.98) 0 20%, rgba(65, 88, 146, 0.98) 20% 100%);
+    }
+    .danger {
+      background:
+        linear-gradient(180deg, rgba(255, 137, 100, 0.98) 0 20%, rgba(137, 54, 54, 0.98) 20% 100%);
+    }
+    #ground {
+      position: fixed;
+      inset: auto 0 0 0;
+      height: 110px;
+      background: repeating-linear-gradient(90deg, rgba(74, 120, 58, 0.92) 0 60px, rgba(66, 104, 51, 0.92) 60px 120px);
+      border-top: 4px solid rgba(34, 66, 24, 0.7);
+    }
+    #end {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(5, 8, 12, 0.68);
+      z-index: 20;
+    }
+    #endBox {
+      background: rgba(18, 24, 27, 0.95);
+      border: 2px solid rgba(238,255,236,.24);
+      border-radius: 16px;
+      padding: 18px;
+      text-align: center;
+      min-width: 280px;
+    }
+    button {
+      border: none;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #6ddf8a, #58b0ff);
+      color: #062033;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    @media (max-width: 860px) {
+      #tips { top: auto; bottom: 122px; width: calc(100vw - 24px); }
+      #board { width: min(250px, 92vw); top: auto; bottom: 12px; }
+      #rows { max-height: 160px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">Room: -- | Score: 0 | Time: 75 | Combo: x1</div>
+  <div id="tips">Click grass blocks for points. Blue blocks boost score. Red blocks tax time. Keep a combo alive for frenzy bursts.</div>
+  <aside id="board"><h3>Planet Leaderboard</h3><ol id="rows"></ol></aside>
+  <div id="arena"></div>
+  <div id="ground"></div>
+  <div id="end"><div id="endBox"><h2 id="endText">Round Over</h2><button onclick="location.reload()">Play Again</button></div></div>
+
+  <script src="../player-system.js"></script>
+  <script>
+    const GAME_ID = 'block-party-arena';
+    const room = RGW.getCurrentRoomCode() || new URLSearchParams(location.search).get('room') || '';
+    const arena = document.getElementById('arena');
+    const rows = document.getElementById('rows');
+    const hud = document.getElementById('hud');
+    let score = 0;
+    let timeLeft = 75;
+    let alive = true;
+    let combo = 1;
+    let lastHitAt = 0;
+    let wave = 1;
+    let frenzyTicks = 0;
+
+    if (!room) {
+      alert('Join or host a planet first from the Planets Hub or Account page.');
+      location.href = '../planets.html';
+    } else {
+      RGW.setCurrentRoomCode(room);
+    }
+
+    function updateHud() {
+      const frenzy = frenzyTicks > 0 ? ' | FRENZY!' : '';
+      hud.textContent = `Room: ${room} | Score: ${score} | Time: ${timeLeft} | Combo: x${combo}${frenzy}`;
+    }
+
+    function popText(text, x, y, color) {
+      const el = document.createElement('div');
+      el.textContent = text;
+      el.style.position = 'fixed';
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.color = color || '#ffffff';
+      el.style.fontWeight = '900';
+      el.style.fontSize = '18px';
+      el.style.textShadow = '0 2px 8px rgba(0,0,0,.45)';
+      el.style.pointerEvents = 'none';
+      el.style.zIndex = '30';
+      el.style.transition = 'transform .55s ease, opacity .55s ease';
+      document.body.appendChild(el);
+      requestAnimationFrame(() => {
+        el.style.transform = 'translateY(-28px) scale(1.08)';
+        el.style.opacity = '0';
+      });
+      setTimeout(() => el.remove(), 600);
+    }
+
+    function registerHit(basePoints, tile, color) {
+      const now = Date.now();
+      if (now - lastHitAt < 1700) {
+        combo = Math.min(8, combo + 1);
+      } else {
+        combo = 1;
+      }
+      lastHitAt = now;
+      const total = basePoints * combo * (frenzyTicks > 0 ? 2 : 1);
+      score += total;
+      popText('+' + total, tile.offsetLeft + 14, tile.offsetTop + 8, color);
+      if (combo >= 5 && frenzyTicks <= 0) {
+        frenzyTicks = 8;
+        popText('FRENZY!', Math.max(20, window.innerWidth / 2 - 46), 90, '#ffe978');
+      }
+    }
+
+    function spawnTile() {
+      const tile = document.createElement('button');
+      const roll = Math.random();
+      tile.className = 'tile' + (roll > 0.83 ? ' bonus' : (roll < 0.14 ? ' danger' : ''));
+      tile.style.left = (Math.random() * Math.max(80, window.innerWidth - 96)) + 'px';
+      tile.style.top = (Math.random() * Math.max(80, window.innerHeight - 240)) + 'px';
+      tile.addEventListener('click', function () {
+        if (!alive) return;
+        if (tile.classList.contains('bonus')) {
+          registerHit(18, tile, '#7fefff');
+        } else if (tile.classList.contains('danger')) {
+          timeLeft = Math.max(5, timeLeft - 6);
+          registerHit(2, tile, '#ffb19f');
+        } else {
+          registerHit(10, tile, '#c8ff92');
+        }
+        tile.remove();
+        updateHud();
+      });
+      arena.appendChild(tile);
+      setTimeout(function () {
+        if (tile.parentNode) tile.remove();
+      }, 2600);
+    }
+
+    async function syncBoard() {
+      if (!alive) return;
+      await RGW.submitRoomScore(GAME_ID, score, room);
+      const board = await RGW.getRoomLeaderboard(GAME_ID, room);
+      const items = (board && board.scores) ? board.scores : [];
+      if (!items.length) {
+        rows.innerHTML = '<li>Waiting for players...</li>';
+        return;
+      }
+      rows.innerHTML = items.slice(0, 10).map(function (r) {
+        return '<li>' + r.username + ': ' + r.score + '</li>';
+      }).join('');
+    }
+
+    function endGame() {
+      alive = false;
+      document.getElementById('endText').textContent = 'Round Over - Score: ' + score + ' - Wave ' + wave;
+      document.getElementById('end').style.display = 'flex';
+      updateHud();
+    }
+
+    function tick() {
+      if (!alive) return;
+      timeLeft -= 1;
+      if (frenzyTicks > 0) frenzyTicks -= 1;
+      if (Date.now() - lastHitAt > 2200) combo = 1;
+      if (timeLeft % 15 === 0) {
+        wave += 1;
+        popText('WAVE ' + wave, Math.max(20, window.innerWidth / 2 - 40), 124, '#ffffff');
+      }
+      updateHud();
+      if (timeLeft <= 0) {
+        endGame();
+        return;
+      }
+      const count = frenzyTicks > 0 ? 4 : (wave >= 4 ? 3 : (Math.random() > 0.55 ? 2 : 1));
+      for (let i = 0; i < count; i += 1) spawnTile();
+    }
+
+    updateHud();
+    setInterval(tick, 1000);
+    setInterval(syncBoard, 1600);
+    syncBoard();
+  </script>
+</body>
+</html>

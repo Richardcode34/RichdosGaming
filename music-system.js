@@ -198,6 +198,18 @@
       leadVol: 0.56,
       bassVol: 0.38,
       pulseVol: 0.14
+    },
+    miniblox: {
+      tempo: 420,
+      lead: [392, 440, 523.25, 587.33, 523.25, 440, 392, 349.23],
+      bass: [98, 110, 130.81, 146.83, 130.81, 110, 98, 87.31],
+      pulse: [196, 220, 261.63, 293.66, 261.63, 220, 196, 174.61],
+      leadType: "triangle",
+      bassType: "sine",
+      pulseType: "square",
+      leadVol: 0.72,
+      bassVol: 0.46,
+      pulseVol: 0.18
     }
   };
 
@@ -234,6 +246,8 @@
     ,
     rain: "Rain",
     lounge: "Lounge"
+    ,
+    miniblox: "Miniblox Party"
   };
 
   function getThemeIdFromPath() {
@@ -276,7 +290,7 @@
       return "ocean";
     }
     if (path.indexOf("page-6-party") >= 0 || path.indexOf("/games/duel-arena") >= 0) {
-      return "party";
+      return "miniblox";
     }
     if (path.indexOf("account.html") >= 0 || path.indexOf("leaderboard.html") >= 0 || path.indexOf("inventory.html") >= 0 || path.indexOf("updates.html") >= 0) {
       return "chill";
@@ -296,12 +310,12 @@
       puzzle: ["puzzle", "chill", "forest", "lounge"],
       arcade: ["arcade", "party", "rhythm", "shooting"],
       realistic: ["realistic", "chill", "forest", "rain"],
-      party: ["party", "arcade", "rhythm"],
+      party: ["miniblox", "party", "arcade", "rhythm"],
       rhythm: ["rhythm", "party", "arcade"],
       stealth: ["stealth", "rain", "chill", "forest"],
       tycoon: ["tycoon", "lounge", "chill", "home"],
       chill: ["chill", "lounge", "rain", "ocean"],
-      minecraft: ["minecraft", "forest", "rain", "chill"],
+      minecraft: ["minecraft", "miniblox", "forest", "rain", "chill"],
       forest: ["forest", "rain", "minecraft", "chill"],
       ocean: ["ocean", "rain", "chill", "lounge"],
       desert: ["desert", "tycoon", "realistic", "arcade"],
@@ -555,7 +569,7 @@
     const mode = document.getElementById("rgwMusicMode");
     const themeTag = document.getElementById("rgwMusicTheme");
 
-    const keys = ["auto", "rain", "lounge", "minecraft", "forest", "ocean", "desert", "home", "shooting", "racing", "puzzle", "arcade", "realistic", "party", "rhythm", "stealth", "tycoon", "chill"];
+    const keys = ["auto", "miniblox", "rain", "lounge", "minecraft", "forest", "ocean", "desert", "home", "shooting", "racing", "puzzle", "arcade", "realistic", "party", "rhythm", "stealth", "tycoon", "chill"];
     for (let i = 0; i < keys.length; i += 1) {
       const k = keys[i];
       const opt = document.createElement("option");

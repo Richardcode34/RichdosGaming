@@ -7,13 +7,17 @@ $ErrorActionPreference = "Stop"
 $pages = @(
   "/index.html",
   "/account.html",
+  "/planets.html",
   "/shop.html",
   "/inventory.html",
   "/leaderboard.html",
   "/messages.html",
   "/updates.html",
   "/help-center.html",
-  "/ai-assistant.html"
+  "/ai-assistant.html",
+  "/page-6-party.html",
+  "/page-7-minecraft.html",
+  "/games/block-party-arena.html"
 )
 
 $apis = @(

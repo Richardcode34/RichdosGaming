@@ -78,6 +78,7 @@
         <p id="level">1</p>
         <p id="credits">0 credits</p>
         <p id="tokens">0 tokens</p>
+        <p id="gameKeys">0 keys</p>
       </article>
     </section>
 
@@ -120,7 +121,8 @@
         <p class="meta">Create or join a room code so friends can play together on the same shared server.</p>
         <div class="glass-strip">
           <input id="roomCode" class="input" type="text" maxlength="12" placeholder="Room code e.g. BLOCKCITY" />
-          <button id="joinRoomBtn" class="btn" type="button">Join Room</button>
+          <button id="roomGenerateBtn" class="btn" type="button">Generate Room</button>
+          <button id="joinRoomBtn" class="btn" type="button">Create / Join Room</button>
           <button id="refreshRoomBtn" class="btn" type="button">Refresh Rooms</button>
         </div>
         <p id="roomStatus" class="status-line"></p>
@@ -134,6 +136,8 @@
           <input id="ownerTargetUser" class="input" type="text" maxlength="24" placeholder="Target username" />
           <input id="ownerSetPoints" class="input" type="number" min="0" step="1" placeholder="Rank points" />
           <input id="ownerSetCredits" class="input" type="number" min="0" step="1" placeholder="Credits" />
+          <input id="ownerSetTokens" class="input" type="number" min="0" step="1" placeholder="Tokens" />
+          <input id="ownerSetKeys" class="input" type="number" min="0" step="1" placeholder="Keys" />
           <input id="ownerSetPass" class="input" type="password" maxlength="40" placeholder="Owner password" />
           <button id="ownerApplyBtn" class="btn" type="button">Apply</button>
         </div>
@@ -220,8 +224,40 @@
           </select>
           <button id="merchantModeBtn" class="btn" type="button">Apply Merchant Mode</button>
         </div>
+        <div class="glass-strip">
+          <input id="adminGrantTarget" class="input" type="text" maxlength="24" placeholder="Grant target" />
+          <input id="adminGrantPoints" class="input" type="number" min="0" step="1" placeholder="+Points" />
+          <input id="adminGrantCredits" class="input" type="number" min="0" step="1" placeholder="+Credits" />
+          <input id="adminGrantTokens" class="input" type="number" min="0" step="1" placeholder="+Tokens" />
+          <input id="adminGrantKeys" class="input" type="number" min="0" step="1" placeholder="+Keys" />
+          <button id="adminGrantBtn" class="btn" type="button">Grant To Player</button>
+        </div>
         <p id="modStatus" class="status-line"></p>
         <ul id="modBanList" class="member-list"></ul>
+      </article>
+
+      <article class="mini-card room-card" id="tradePanel">
+        <h2>Trade Center</h2>
+        <p class="meta">Send credits, tokens, or keys to another player instantly.</p>
+        <div class="glass-strip">
+          <input id="tradeTarget" class="input" type="text" maxlength="24" placeholder="Trade target username" />
+          <input id="tradeCredits" class="input" type="number" min="0" step="1" placeholder="Credits" />
+          <input id="tradeTokens" class="input" type="number" min="0" step="1" placeholder="Tokens" />
+          <input id="tradeKeys" class="input" type="number" min="0" step="1" placeholder="Keys" />
+          <button id="tradeSendBtn" class="btn" type="button">Send Trade</button>
+        </div>
+        <p id="tradeStatus" class="status-line"></p>
+      </article>
+
+      <article class="mini-card room-card" id="helperPanel" hidden>
+        <h2>Helper / Staff Desk</h2>
+        <p class="meta">Helpers can toggle availability and close help tickets. Mods/admins/owner can do the same here too.</p>
+        <div class="glass-strip">
+          <button id="helperToggleBtn" class="btn" type="button">Toggle Availability</button>
+          <button id="helperRefreshBtn" class="btn" type="button">Refresh Tickets</button>
+        </div>
+        <p id="helperStatus" class="status-line"></p>
+        <ul id="helperTicketDesk" class="member-list"></ul>
       </article>
     </section>
   </main>
@@ -353,6 +389,36 @@
       list.innerHTML = rooms.map(r => `<li>${r.code}: ${(r.members || []).join(', ')}</li>`).join('');
     }
 
+    function renderHelperDesk() {
+      const username = RGW.getCurrentUsername();
+      const isStaff = RGW.isHelperUser(username) || RGW.isModUser(username) || RGW.isAdminUser(username) || RGW.isOwnerUser(username);
+      const panel = document.getElementById('helperPanel');
+      panel.hidden = !isStaff;
+      if (!isStaff) return;
+
+      const account = RGW.getAccount(username) || {};
+      const openTickets = RGW.getHelpTickets().filter(t => String(t.status || '') !== 'closed');
+      const list = document.getElementById('helperTicketDesk');
+      document.getElementById('helperStatus').textContent = account.helpingAvailable ? 'Status: Available for players' : 'Status: Busy / hidden';
+
+      if (!openTickets.length) {
+        list.innerHTML = '<li>No open help tickets right now.</li>';
+        return;
+      }
+
+      list.innerHTML = openTickets.slice(0, 20).map(t => {
+        return `<li><strong>${t.username}</strong>: ${t.message} <button class="btn" data-close-ticket="${t.id}">Close</button></li>`;
+      }).join('');
+
+      list.querySelectorAll('button[data-close-ticket]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const result = RGW.closeHelpTicket(btn.getAttribute('data-close-ticket'), 'Handled from helper desk');
+          document.getElementById('helperStatus').textContent = result.message || '';
+          renderHelperDesk();
+        });
+      });
+    }
+
     async function renderModeration() {
       const username = RGW.getCurrentUsername();
       const isOwner = RGW.isOwnerUser(username);
@@ -377,6 +443,13 @@
         .forEach(id => {
           const el = document.getElementById(id);
           if (el) el.disabled = !canModerate;
+        });
+
+      const canGrant = isOwner || isAdmin;
+      ['adminGrantTarget', 'adminGrantPoints', 'adminGrantCredits', 'adminGrantTokens', 'adminGrantKeys', 'adminGrantBtn']
+        .forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.disabled = !canGrant;
         });
 
       const data = await RGW.getModerationState();
@@ -486,11 +559,13 @@
       const level = user ? (Number(user.level) || RGW.levelFromPoints(points)) : 1;
       const credits = user ? (Number(user.credits) || 0) : 0;
       const tokens = user ? (Number(user.tokens) || 0) : 0;
+      const keys = user ? (Number(user.gameKeys) || 0) : 0;
       document.getElementById('rankName').textContent = rank;
       document.getElementById('rankPoints').textContent = `${fmt(points)} ${t('points')}`;
       document.getElementById('level').textContent = fmt(level);
       document.getElementById('credits').textContent = `${fmt(credits)} ${t('credits')}`;
       document.getElementById('tokens').textContent = `${fmt(tokens)} tokens`;
+      document.getElementById('gameKeys').textContent = `${fmt(keys)} keys`;
 
       const toNext = 100;
       const inLevel = points % 100;
@@ -500,6 +575,7 @@
       ownerPanel.hidden = !isOwner;
       const modPanel = document.getElementById('modPanel');
       modPanel.hidden = !(isOwner || isAdmin || isMod || isHelper);
+      renderHelperDesk();
 
       const nameInput = document.getElementById('nameInput');
       const switchBtn = document.getElementById('createSwitchBtn');
@@ -553,9 +629,40 @@
       const target = document.getElementById('ownerTargetUser').value.trim();
       const points = document.getElementById('ownerSetPoints').value;
       const credits = document.getElementById('ownerSetCredits').value;
+      const tokens = document.getElementById('ownerSetTokens').value;
+      const keys = document.getElementById('ownerSetKeys').value;
       const pass = document.getElementById('ownerSetPass').value;
-      const result = RGW.ownerSetPointsCredits(target, points, credits, pass);
+      const result = RGW.ownerSetPointsCredits(target, points, credits, tokens, keys, pass);
       document.getElementById('ownerStatus').textContent = result.message || '';
+      if (result.ok) {
+        loadCurrent();
+      }
+    });
+
+    document.getElementById('adminGrantBtn').addEventListener('click', () => {
+      const payload = {
+        targetUsername: document.getElementById('adminGrantTarget').value.trim(),
+        rankPoints: Number(document.getElementById('adminGrantPoints').value || 0),
+        credits: Number(document.getElementById('adminGrantCredits').value || 0),
+        tokens: Number(document.getElementById('adminGrantTokens').value || 0),
+        gameKeys: Number(document.getElementById('adminGrantKeys').value || 0)
+      };
+      const result = RGW.adminGiveAny(payload);
+      document.getElementById('modStatus').textContent = result.message || '';
+      if (result.ok) {
+        loadCurrent();
+      }
+    });
+
+    document.getElementById('tradeSendBtn').addEventListener('click', () => {
+      const payload = {
+        targetUsername: document.getElementById('tradeTarget').value.trim(),
+        credits: Number(document.getElementById('tradeCredits').value || 0),
+        tokens: Number(document.getElementById('tradeTokens').value || 0),
+        gameKeys: Number(document.getElementById('tradeKeys').value || 0)
+      };
+      const result = RGW.tradeWithPlayer(payload);
+      document.getElementById('tradeStatus').textContent = result.message || '';
       if (result.ok) {
         loadCurrent();
       }
@@ -606,9 +713,28 @@
       await renderRooms();
     });
 
+    document.getElementById('roomGenerateBtn').addEventListener('click', () => {
+      const generated = 'ROOM' + Math.random().toString(36).slice(2, 8).toUpperCase();
+      document.getElementById('roomCode').value = generated;
+      document.getElementById('roomStatus').textContent = `Generated room code ${generated}`;
+    });
+
     document.getElementById('refreshRoomBtn').addEventListener('click', async () => {
       await renderRooms();
       document.getElementById('roomStatus').textContent = 'Rooms refreshed';
+    });
+
+    document.getElementById('helperToggleBtn').addEventListener('click', () => {
+      const me = RGW.getAccount();
+      const next = !(me && me.helpingAvailable);
+      const result = RGW.setHelpingAvailability(next);
+      document.getElementById('helperStatus').textContent = result.message || '';
+      loadCurrent();
+    });
+
+    document.getElementById('helperRefreshBtn').addEventListener('click', () => {
+      renderHelperDesk();
+      document.getElementById('helperStatus').textContent = 'Helper desk refreshed';
     });
 
     document.getElementById('modRefreshBtn').addEventListener('click', async () => {

@@ -6,14 +6,75 @@
   <link rel="stylesheet" href="graphics.css" />
   <title>Page 6 - Party and Local Multiplayer</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    :root {
+      --party-sky: #79b8ff;
+      --party-block: #4c8744;
+      --party-dark: #233d1f;
+      --party-text: #f3fff0;
+      --party-accent: #ffe978;
+    }
+    body.party-blocks {
+      background:
+        linear-gradient(180deg, rgba(123, 184, 255, 0.96), rgba(62, 132, 199, 0.94) 48%, rgba(84, 146, 70, 0.94) 48%, rgba(58, 113, 54, 0.95) 100%);
+      color: var(--party-text);
+    }
+    .party-blocks .hero,
+    .party-blocks .card,
+    .party-blocks .about {
+      border: 3px solid var(--party-dark);
+      border-radius: 0;
+      box-shadow: 0 8px 0 rgba(28, 46, 25, 0.85);
+    }
+    .party-blocks .hero {
+      background: linear-gradient(180deg, rgba(99, 173, 250, 0.96), rgba(54, 132, 209, 0.96));
+    }
+    .party-blocks .card,
+    .party-blocks .about {
+      background: linear-gradient(180deg, rgba(74, 128, 63, 0.96), rgba(47, 88, 40, 0.96));
+    }
+    .party-blocks .card a,
+    .party-blocks .about a {
+      display: inline-block;
+      padding: 8px 12px;
+      text-decoration: none;
+      border: 2px solid rgba(36, 54, 31, 0.96);
+      background: linear-gradient(180deg, var(--party-accent), #d8b84c);
+      color: #2a1e00;
+      font-weight: 900;
+      box-shadow: 0 4px 0 rgba(54, 37, 0, 0.6);
+    }
+    .party-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .party-chip {
+      border: 2px solid rgba(27, 45, 23, 0.96);
+      background: rgba(255, 255, 255, 0.12);
+      padding: 12px;
+      box-shadow: 0 5px 0 rgba(27, 45, 23, 0.7);
+    }
+  </style>
 </head>
-<body>
+<body class="party-blocks">
   <main class="hub">
     <header class="hero">
       <p class="brand">Richdos Gaming Website</p>
-      <h1>Page 6: Party / Local Multiplayer</h1>
-      <p class="tag">Play together on one keyboard with fast mini-games.</p>
+      <h1>Page 6: Party Plaza / Miniblox Style</h1>
+      <p class="tag">Play together on one keyboard, jump into shared rooms, and keep the block-party energy high.</p>
     </header>
+
+    <section class="about">
+      <h2>Party Plaza</h2>
+      <p>This page is built to feel closer to a Miniblox-style social zone: quick games, room jumping, and bright blocky visuals.</p>
+      <div class="party-strip">
+        <article class="party-chip"><h3>Room Party</h3><p>Create a room in Account, then use multiplayer pages with your friends.</p></article>
+        <article class="party-chip"><h3>Block Vibe</h3><p>Use the music dropdown and choose <strong>Miniblox Party</strong> or keep auto mode here.</p></article>
+        <article class="party-chip"><h3>Fast Rotations</h3><p>Jump between Duel Arena, Color Rush, Rhythm Smash, and bike runs like mini party rounds.</p></article>
+      </div>
+    </section>
 
     <section class="cards" aria-label="Party Games">
       <article class="card">
@@ -36,6 +97,16 @@
         <h2>Rhythm Smash</h2>
         <p>Party rhythm game where players can take turns on beats.</p>
         <a href="games/rhythm-smash.html">Play</a>
+      </article>
+      <article class="card">
+        <h2>Multiplayer Orb Rush</h2>
+        <p>Shared room orb race with live leaderboard just like a mini party lobby challenge.</p>
+        <a href="account.html">Open Room First</a>
+      </article>
+      <article class="card">
+        <h2>Block Party Arena</h2>
+        <p>Original block-hunt multiplayer room game with a Miniblox-style social feel.</p>
+        <a href="games/block-party-arena.html">Play</a>
       </article>
     </section>
 

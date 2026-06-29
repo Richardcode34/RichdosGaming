@@ -1183,7 +1183,7 @@
     return accounts[name];
   }
 
-  function ownerSetPointsCredits(targetUsername, rankPointsValue, creditsValue, password) {
+  function ownerSetPointsCredits(targetUsername, rankPointsValue, creditsValue, tokensValue, gameKeysValue, password) {
     const current = getCurrentUsername();
     if (!isOwnerUser(current)) {
       return { ok: false, message: "Owner only" };
@@ -1199,6 +1199,8 @@
 
     const points = Math.max(0, Number(rankPointsValue) || 0);
     const credits = Math.max(0, Number(creditsValue) || 0);
+    const tokens = Math.max(0, Number(tokensValue) || 0);
+    const gameKeys = Math.max(0, Number(gameKeysValue) || 0);
     const accounts = loadAccounts();
     if (!accounts[target]) {
       accounts[target] = createEmptyAccount(target);
@@ -1207,6 +1209,8 @@
     const account = accounts[target];
     account.rankPoints = Math.floor(points);
     account.credits = Math.floor(credits);
+    account.tokens = Math.floor(tokens);
+    account.gameKeys = Math.floor(gameKeys);
     account.level = levelFromPoints(account.rankPoints);
     account.rankName = rankFromPoints(account.rankPoints);
     ensureRole(account);
@@ -1222,6 +1226,8 @@
         username: account.username,
         rankPoints: account.rankPoints,
         credits: account.credits,
+        tokens: account.tokens,
+        gameKeys: account.gameKeys,
         level: account.level,
         rankName: account.rankName
       }
@@ -2766,7 +2772,7 @@
     const list = Object.values(accounts || {}).map(function (a) {
       ensureProgression(a);
       const role = String(a.role || "player").toLowerCase();
-      const canHelp = role === "helper" || role === "admin" || role === "owner";
+      const canHelp = role === "helper" || role === "mod" || role === "admin" || role === "owner";
       const seenMs = Date.parse(String(a.lastSeen || ""));
       const online = Number.isFinite(seenMs) ? ((Date.now() - seenMs) <= 10 * 60 * 1000) : false;
       return {

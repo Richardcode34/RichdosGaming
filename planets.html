@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planets Hub - Richdos Gaming</title>
+  <script src="player-system.js"></script>
+  <style>
+    :root {
+      --bg: #142032;
+      --bg-2: #1d2f47;
+      --panel: #0d1724;
+      --panel-2: #132233;
+      --line: rgba(255,255,255,.12);
+      --text: #f5efff;
+      --muted: #cdbfe2;
+      --accent: #5cc8ff;
+      --accent-2: #ffb347;
+      --green: #7ff0d1;
+      --gold: #ffe27a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 12% 10%, rgba(167,126,255,.18), transparent 24%),
+        radial-gradient(circle at 88% 0%, rgba(255,133,113,.14), transparent 22%),
+        linear-gradient(180deg, #1a2d45, #112032 60%, #0b1420);
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: radial-gradient(rgba(255,255,255,.45) 1px, transparent 1px);
+      background-size: 32px 32px;
+      opacity: .35;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 86px minmax(0, 1fr) 260px;
+      gap: 20px;
+      width: min(1450px, 96vw);
+      margin: 16px auto;
+      position: relative;
+      z-index: 1;
+    }
+    .rail, .side {
+      background: rgba(9,17,26,.9);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px 10px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 20px 40px rgba(0,0,0,.28);
+    }
+    .rail {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+    }
+    .rail a {
+      width: 58px;
+      min-height: 58px;
+      border-radius: 14px;
+      text-decoration: none;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 6px;
+      font: 800 11px/1 "Trebuchet MS", sans-serif;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(28,48,71,.96), rgba(12,22,34,.96));
+    }
+    .rail a:hover { filter: brightness(1.08); }
+    .main {
+      display: grid;
+      gap: 18px;
+    }
+    .hero {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 22px;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(23,42,62,.94), rgba(11,21,33,.94));
+      box-shadow: 0 20px 40px rgba(0,0,0,.25);
+    }
+    .cube {
+      width: 58px;
+      height: 58px;
+      border-radius: 16px;
+      border: 1px solid rgba(180, 150, 255, .45);
+      background: linear-gradient(180deg, #49b8ff, #225a92);
+      display: grid;
+      place-items: center;
+      box-shadow: 0 0 0 4px rgba(92,200,255,.16);
+      font-size: 28px;
+    }
+    .hero h1 {
+      margin: 0 0 4px 0;
+      font-size: clamp(1.7rem, 3vw, 2.4rem);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .hero h1 span { color: var(--gold); }
+    .hero p { margin: 0; color: var(--muted); }
+    .actions, .modes, .rooms, .row-grid {
+      display: grid;
+      gap: 14px;
+    }
+    .actions { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .action, .panel, .mode-card, .planet-card, .stat-box {
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(16,28,42,.96), rgba(10,18,27,.96));
+      box-shadow: 0 12px 24px rgba(0,0,0,.22);
+    }
+    .action {
+      padding: 14px;
+      text-align: center;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 800;
+    }
+    .action small { display: block; margin-top: 4px; color: var(--muted); }
+    .panel { padding: 16px; }
+    .panel h2 {
+      margin: 0 0 10px 0;
+      font-size: 1rem;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    .row-grid { grid-template-columns: 1.15fr .85fr; }
+    .modes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .mode-card {
+      overflow: hidden;
+      min-height: 150px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      background-size: cover;
+      background-position: center;
+    }
+    .mode-card .info {
+      padding: 14px;
+      background: linear-gradient(180deg, transparent, rgba(8,5,12,.92));
+    }
+    .mode-card h3, .planet-card h3 { margin: 0 0 6px 0; }
+    .mode-card p, .planet-card p, .panel p { margin: 0; color: var(--muted); }
+    .planet-list { display: grid; gap: 12px; }
+    .planet-card { padding: 14px; }
+    .glass-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .input, .select, .btn {
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 12px;
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 10px 12px;
+      font: 700 13px/1.2 "Trebuchet MS", sans-serif;
+    }
+    .input, .select { flex: 1 1 140px; }
+    .btn {
+      cursor: pointer;
+      background: linear-gradient(135deg, #3cb7ff, #7ff0d1);
+      color: #fff;
+      min-width: 120px;
+    }
+    .btn.alt { background: linear-gradient(135deg, #ffb347, #ff7f6e); }
+    .status-line { margin-top: 10px; min-height: 18px; color: var(--green); }
+    .stat-stack { display: grid; gap: 12px; }
+    .stat-box { padding: 14px; }
+    .stat-box strong { display: block; font-size: 1.15rem; margin-top: 6px; }
+    .quick-links { display: grid; gap: 8px; margin-top: 12px; }
+    .quick-links a {
+      text-decoration: none;
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      font-weight: 700;
+    }
+    @media (max-width: 1180px) {
+      .layout { grid-template-columns: 1fr; }
+      .rail { flex-direction: row; justify-content: center; flex-wrap: wrap; }
+      .row-grid { grid-template-columns: 1fr; }
+      .actions { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .modes { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      .actions { grid-template-columns: 1fr; }
+      .hero { padding: 16px; }
+      .hero h1 { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <nav class="rail" aria-label="Planets navigation">
+      <a href="index.html"><span>🏠</span><span>Home</span></a>
+      <a href="account.html"><span>👤</span><span>Account</span></a>
+      <a href="messages.html"><span>💬</span><span>Messages</span></a>
+      <a href="updates.html"><span>📣</span><span>News</span></a>
+      <a href="shop.html"><span>🛒</span><span>Shop</span></a>
+      <a href="page-7-minecraft.html"><span>🧱</span><span>Blocks</span></a>
+    </nav>
+
+    <main class="main">
+      <section class="hero">
+          <div class="cube">✦</div>
+        <div>
+            <h1>Welcome Back, <span id="heroName">Player</span></h1>
+            <p>Find your next favorite world, host a custom planet, or jump into a live room with your crew.</p>
+        </div>
+      </section>
+
+      <section class="actions">
+        <a class="action" href="#browse">Browse Worlds<small>See active public rooms</small></a>
+        <a class="action" href="#host">Host World<small>Create a room + pick a game</small></a>
+        <a class="action" href="#modes">Load Modes<small>Blocks, parkour, sky islands</small></a>
+        <a class="action" href="#join">Join With Code<small>Use a room code instantly</small></a>
+      </section>
+
+      <section id="modes" class="panel">
+        <h2>Featured Modes</h2>
+        <div class="modes">
+          <article class="mode-card" style="background-image:linear-gradient(180deg, rgba(0,0,0,.12), rgba(0,0,0,.28)), url('https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&w=900&q=60');">
+            <div class="info"><h3>Voxel Builder</h3><p>Creative block building with unlock progression.</p></div>
+          </article>
+          <article class="mode-card" style="background-image:linear-gradient(180deg, rgba(0,0,0,.12), rgba(0,0,0,.28)), url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=60');">
+            <div class="info"><h3>Skyblock</h3><p>Floating islands, survival loops, and fast resets.</p></div>
+          </article>
+          <article class="mode-card" style="background-image:linear-gradient(180deg, rgba(0,0,0,.12), rgba(0,0,0,.28)), url('https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=900&q=60');">
+            <div class="info"><h3>Party Plaza</h3><p>Quick local and multiplayer rounds with a blocky vibe.</p></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="row-grid">
+        <section id="browse" class="panel">
+          <h2>Public Worlds</h2>
+          <p>These worlds are powered by your room system. Hosts can create a room and select a mode.</p>
+          <div id="planetList" class="planet-list"></div>
+        </section>
+
+        <section id="host" class="panel">
+          <h2>Host Or Join</h2>
+          <div class="glass-strip">
+            <input id="planetCode" class="input" type="text" maxlength="12" placeholder="World code" />
+            <button id="planetGenerateBtn" class="btn alt" type="button">Generate</button>
+          </div>
+          <div class="glass-strip">
+            <select id="planetGame" class="select">
+              <option value="voxel-builder">Voxel Builder</option>
+              <option value="mine-crafter-survival">Mine Crafter Survival</option>
+              <option value="minecraft-parkour">Minecraft Parkour</option>
+              <option value="minecraft-skyblock">Minecraft Skyblock</option>
+              <option value="block-party-arena">Block Party Arena</option>
+              <option value="multiplayer-orb-rush">Multiplayer Orb Rush</option>
+              <option value="multiplayer-drift-duel">Multiplayer Drift Duel</option>
+            </select>
+            <button id="planetHostBtn" class="btn" type="button">Host World</button>
+          </div>
+          <div id="join" class="glass-strip">
+            <input id="joinCode" class="input" type="text" maxlength="12" placeholder="Join existing code" />
+            <button id="planetJoinBtn" class="btn alt" type="button">Join Code</button>
+          </div>
+          <p id="planetStatus" class="status-line"></p>
+          <div class="quick-links">
+            <a href="page-7-minecraft.html">Open Block Worlds</a>
+            <a href="page-6-party.html">Open Party Plaza</a>
+            <a href="index.html">Back to Main Hub</a>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <aside class="side">
+      <div class="stat-stack">
+        <section class="stat-box">
+          <span>Current Player</span>
+          <strong id="sideName">Player</strong>
+          <p id="sideRank">Rank: Dirt</p>
+        </section>
+        <section class="stat-box">
+          <span>Resources</span>
+          <strong id="sideStats">Pts 0 | Cr 0</strong>
+          <p id="sideMore">Tk 0 | Keys 0</p>
+        </section>
+        <section class="stat-box">
+          <span>Current Room</span>
+          <strong id="sideRoom">None</strong>
+          <p>Use room hosting to create your own public planet.</p>
+        </section>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    function esc(text) {
+      return String(text || '').replace(/[&<>\"]/g, function (c) {
+        if (c === '&') return '&amp;';
+        if (c === '<') return '&lt;';
+        if (c === '>') return '&gt;';
+        return '&quot;';
+      });
+    }
+
+    const GAME_URLS = {
+      'voxel-builder': 'games/voxel-builder.html',
+      'mine-crafter-survival': 'games/mine-crafter-survival.html',
+      'minecraft-parkour': 'games/minecraft-parkour.html',
+      'minecraft-skyblock': 'games/minecraft-skyblock.html',
+      'block-party-arena': 'games/block-party-arena.html',
+      'multiplayer-orb-rush': 'games/multiplayer-orb-rush.html',
+      'multiplayer-drift-duel': 'games/multiplayer-drift-duel.html'
+    };
+
+    function generatePlanetCode() {
+      return 'PX' + Math.random().toString(36).slice(2, 8).toUpperCase();
+    }
+
+    async function renderPlanetsHub() {
+      await RGW.syncCurrentAccountFromLan();
+      const user = RGW.getAccount() || {};
+      const room = RGW.getCurrentRoomCode() || 'None';
+      document.getElementById('heroName').textContent = String(user.username || 'Player').toUpperCase();
+      document.getElementById('sideName').textContent = user.username || 'Player';
+      document.getElementById('sideRank').textContent = 'Rank: ' + (user.rankName || RGW.rankFromPoints(Number(user.rankPoints) || 0));
+      document.getElementById('sideStats').textContent = 'Pts ' + (Number(user.rankPoints) || 0).toLocaleString() + ' | Cr ' + (Number(user.credits) || 0).toLocaleString();
+      document.getElementById('sideMore').textContent = 'Tk ' + (Number(user.tokens) || 0).toLocaleString() + ' | Keys ' + (Number(user.gameKeys) || 0).toLocaleString();
+      document.getElementById('sideRoom').textContent = room;
+
+      const rooms = await RGW.getRooms();
+      const list = document.getElementById('planetList');
+      if (!rooms.length) {
+        list.innerHTML = '<article class="planet-card"><h3>No planets live</h3><p>Host the first room and launch a block world.</p></article>';
+      } else {
+        list.innerHTML = rooms.slice(0, 12).map(function (r) {
+          const members = Array.isArray(r.members) ? r.members.join(', ') : '';
+          const target = GAME_URLS[String(r.game || '').toLowerCase()] || 'account.html';
+          return '<article class="planet-card"><h3>' + esc(r.code) + '</h3><p>Players: ' + esc(members || 'Waiting for host') + '</p><div class="glass-strip"><button class="btn" data-planet-join="' + esc(r.code) + '" data-game-url="' + esc(target) + '">Join Planet</button></div></article>';
+        }).join('');
+        list.querySelectorAll('button[data-planet-join]').forEach(function (btn) {
+          btn.addEventListener('click', async function () {
+            const code = btn.getAttribute('data-planet-join');
+            const result = await RGW.joinRoom(code);
+            document.getElementById('planetStatus').textContent = result && result.ok ? 'Joined ' + code : ((result && (result.message || result.error)) || 'Join failed');
+            if (result && result.ok) {
+              const gameUrl = btn.getAttribute('data-game-url');
+              if (gameUrl && gameUrl !== 'account.html') {
+                location.href = gameUrl + '?room=' + encodeURIComponent(code);
+              }
+            }
+          });
+        });
+      }
+    }
+
+    document.getElementById('planetGenerateBtn').addEventListener('click', function () {
+      const code = generatePlanetCode();
+      document.getElementById('planetCode').value = code;
+      document.getElementById('joinCode').value = code;
+      document.getElementById('planetStatus').textContent = 'Generated planet code ' + code;
+    });
+
+    document.getElementById('planetHostBtn').addEventListener('click', async function () {
+      const code = (document.getElementById('planetCode').value || '').trim() || generatePlanetCode();
+      const gameId = document.getElementById('planetGame').value;
+      document.getElementById('planetCode').value = code;
+      const joined = await RGW.joinRoom(code);
+      if (!joined || !joined.ok) {
+        document.getElementById('planetStatus').textContent = (joined && (joined.message || joined.error)) || 'Host failed';
+        return;
+      }
+      const setGame = await RGW.setRoomGame(code, gameId);
+      document.getElementById('planetStatus').textContent = setGame && setGame.ok ? 'Hosted planet ' + code : ((setGame && (setGame.message || setGame.error)) || 'Room created');
+      const gameUrl = GAME_URLS[gameId] || 'account.html';
+      if (gameUrl !== 'account.html') {
+        location.href = gameUrl + '?room=' + encodeURIComponent(code);
+      }
+    });
+
+    document.getElementById('planetJoinBtn').addEventListener('click', async function () {
+      const code = (document.getElementById('joinCode').value || '').trim();
+      const result = await RGW.joinRoom(code);
+      document.getElementById('planetStatus').textContent = result && result.ok ? 'Joined planet ' + code : ((result && (result.message || result.error)) || 'Join failed');
+      if (result && result.ok) {
+        renderPlanetsHub();
+      }
+    });
+
+    renderPlanetsHub();
+  </script>
+  <script src="music-system.js"></script>
+</body>
+</html>
