@@ -1146,9 +1146,12 @@
       return false;
     }
     const current = getCurrentUsername();
-    if (isOwnerUser(current) && username.toLowerCase() !== String(current).toLowerCase()) {
-      lastAuthMessage = "Owner account is locked";
-      return false;
+    const currentIsOwner = isOwnerUser(current);
+    if (currentIsOwner && username.toLowerCase() !== String(current).toLowerCase()) {
+      if (!ownerPasswordValid(ownerPassword)) {
+        lastAuthMessage = "Owner password required to switch away";
+        return false;
+      }
     }
     if (isOwnerUser(username) && !ownerPasswordValid(ownerPassword)) {
       lastAuthMessage = "Invalid owner password";
@@ -1316,10 +1319,8 @@
   }
 
   function signOut() {
-    if (isOwnerUser(getCurrentUsername())) {
-      return false;
-    }
     localStorage.removeItem(CURRENT_USER_KEY);
+    lastAuthMessage = "Signed out";
     return true;
   }
 

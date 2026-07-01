@@ -611,17 +611,10 @@
       const nameInput = document.getElementById('nameInput');
       const switchBtn = document.getElementById('createSwitchBtn');
       const logoutBtn = document.getElementById('logoutBtn');
-      if (isOwner) {
-        nameInput.disabled = true;
-        nameInput.placeholder = 'Owner name is locked';
-        switchBtn.disabled = true;
-        logoutBtn.disabled = true;
-      } else {
-        nameInput.disabled = false;
-        nameInput.placeholder = 'Player name';
-        switchBtn.disabled = false;
-        logoutBtn.disabled = false;
-      }
+      nameInput.disabled = false;
+      nameInput.placeholder = isOwner ? 'Owner can switch with owner password' : 'Player name';
+      switchBtn.disabled = false;
+      logoutBtn.disabled = false;
 
       const topGames = document.getElementById('topGames');
       const gameStats = user && user.gameStats ? Object.entries(user.gameStats) : [];
