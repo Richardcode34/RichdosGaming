@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bloxd Climber</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: Trebuchet MS, sans-serif; background: linear-gradient(#89c8ff, #75b46b); color: #f4fff5; }
+    #hud { position: fixed; top: 10px; left: 10px; z-index: 6; background: rgba(13,36,19,.8); border: 2px solid rgba(233,255,214,.3); border-radius: 10px; padding: 8px 10px; font-weight: 800; }
+    #tip { position: fixed; top: 10px; right: 10px; z-index: 6; background: rgba(13,36,19,.8); border: 2px solid rgba(233,255,214,.3); border-radius: 10px; padding: 8px 10px; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="hud">Height: 0 | Checkpoints: 0</div>
+  <div id="tip">Move: A/D, Jump: W or Space</div>
+  <canvas id="g"></canvas>
+  <script>
+    const g = document.getElementById('g');
+    const c = g.getContext('2d');
+    const hud = document.getElementById('hud');
+    function fit() { g.width = innerWidth; g.height = innerHeight; }
+    addEventListener('resize', fit); fit();
+
+    const keys = {};
+    addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; if ((e.key === ' ' || e.key.toLowerCase() === 'w') && p.grounded) p.vy = -14; });
+    addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+    const p = { x: 200, y: 520, vx: 0, vy: 0, grounded: false };
+    let cameraY = 0, checkpoints = 0, alive = true;
+    const plats = [];
+    for (let i = 0; i < 70; i += 1) {
+      plats.push({ x: 80 + Math.random() * 620, y: 640 - i * 80, w: 140, h: 20, checkpoint: i % 10 === 0 });
+    }
+
+    function tick() {
+      if (!alive) return;
+      p.vx = 0;
+      if (keys['a'] || keys['arrowleft']) p.vx = -5;
+      if (keys['d'] || keys['arrowright']) p.vx = 5;
+      p.vy += 0.75;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.grounded = false;
+
+      for (const t of plats) {
+        if (p.x + 30 > t.x && p.x - 30 < t.x + t.w && p.y + 30 > t.y && p.y + 30 < t.y + t.h + 16 && p.vy >= 0) {
+          p.y = t.y - 30;
+          p.vy = 0;
+          p.grounded = true;
+          if (t.checkpoint && !t.hit) { t.hit = true; checkpoints += 1; }
+        }
+      }
+
+      cameraY = Math.min(cameraY, p.y - 260);
+      if (p.y - cameraY > innerHeight + 100) {
+        alive = false;
+        hud.textContent = 'You fell. Height: ' + Math.max(0, Math.floor((-p.y + 600) / 10)) + ' | Checkpoints: ' + checkpoints + ' (reload to retry)';
+      }
+
+      c.fillStyle = '#86c8ff'; c.fillRect(0, 0, g.width, g.height);
+      c.fillStyle = '#6eb05e'; c.fillRect(0, g.height * 0.72, g.width, g.height * 0.28);
+
+      c.save();
+      c.translate(0, -cameraY);
+      for (const t of plats) {
+        c.fillStyle = t.checkpoint ? '#ffe17a' : '#5f8f43';
+        c.fillRect(t.x, t.y, t.w, t.h);
+        c.strokeStyle = '#29431f';
+        c.strokeRect(t.x, t.y, t.w, t.h);
+      }
+      c.fillStyle = '#9ce8ff';
+      c.fillRect(p.x - 18, p.y - 30, 36, 36);
+      c.restore();
+
+      const height = Math.max(0, Math.floor((-p.y + 600) / 10));
+      if (alive) hud.textContent = 'Height: ' + height + ' | Checkpoints: ' + checkpoints;
+      requestAnimationFrame(tick);
+    }
+    tick();
+  </script>
+</body>
+</html>

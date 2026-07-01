@@ -38,10 +38,22 @@
       <div class="glass-strip">
         <span class="pill">Profile Manager</span>
         <input id="nameInput" class="input" type="text" placeholder="Player name" maxlength="24" />
-        <input id="ownerPassInput" class="input" type="password" placeholder="Owner password" maxlength="40" />
+        <input id="ownerPassInput" class="input" type="password" placeholder="Account password" maxlength="40" />
         <button id="createSwitchBtn" class="btn" type="button">Create / Switch</button>
         <button id="logoutBtn" class="btn" type="button">Sign Out</button>
       </div>
+      <div class="glass-strip">
+        <span class="pill">Email Sign In</span>
+        <input id="emailInput" class="input" type="email" placeholder="Email address" maxlength="120" />
+        <input id="emailPassInput" class="input" type="password" placeholder="Email password" maxlength="80" />
+        <label class="pill" for="rememberGoogle" style="display:inline-flex;gap:6px;align-items:center">
+          <input id="rememberGoogle" type="checkbox" /> Remember Google on this device
+        </label>
+        <button id="emailCreateBtn" class="btn" type="button">Create with Email</button>
+        <button id="emailSignInBtn" class="btn" type="button">Sign In with Email</button>
+        <button id="googleSignInBtn" class="btn" type="button">Google Sign In</button>
+      </div>
+      <p id="authStatus" class="status-line"></p>
       <p><a id="linkHome" href="index.html">Home</a> | <a id="linkShop" href="shop.html">Shop</a> | <a id="linkStreak" href="streak.html">🔥 Streak</a> | <a id="linkBoard" href="leaderboard.html">Open Leaderboard</a></p>
       <ul id="topGames" class="inline-list"></ul>
     </section>
@@ -233,6 +245,8 @@
           <button id="adminGrantBtn" class="btn" type="button">Grant To Player</button>
         </div>
         <p id="modStatus" class="status-line"></p>
+        <h3>Player IP Map (Owner/Admin/Mod)</h3>
+        <ul id="modIpList" class="member-list"></ul>
         <ul id="modBanList" class="member-list"></ul>
       </article>
 
@@ -433,10 +447,10 @@
 
       const roleNote = document.getElementById('staffRoleNote');
       if (roleNote) {
-        if (isOwner) roleNote.textContent = 'Role: Owner (full staff controls)';
-        else if (isAdmin) roleNote.textContent = 'Role: Admin (full staff controls)';
-        else if (isMod) roleNote.textContent = 'Role: Mod (moderation controls)';
-        else roleNote.textContent = 'Role: Helper (view-only moderation state)';
+        if (isOwner) roleNote.textContent = 'Role: Owner | Powers: full controls, roles, reset, ban/unban, grants, updates, broadcasts';
+        else if (isAdmin) roleNote.textContent = 'Role: Admin | Powers: ban/unban, grants, merchant mode, help desk, IP map';
+        else if (isMod) roleNote.textContent = 'Role: Mod | Powers: ban/unban, merchant mode, help desk, IP map';
+        else roleNote.textContent = 'Role: Helper | Powers: help desk, ticket close, availability toggle, moderation read-only';
       }
 
       ['modTarget', 'modReason', 'modHours', 'modPass', 'modUnbanIp', 'modBanBtn', 'modUnbanBtn', 'merchantMode', 'merchantModeBtn']
@@ -454,7 +468,24 @@
 
       const data = await RGW.getModerationState();
       const list = document.getElementById('modBanList');
+      const ipList = document.getElementById('modIpList');
       const ipBans = Array.isArray(data.ipBans) ? data.ipBans : [];
+      const userIps = data && data.userIps && typeof data.userIps === 'object' ? data.userIps : {};
+
+      if (canModerate) {
+        const rows = Object.keys(userIps)
+          .map(u => [u, userIps[u]])
+          .filter(pair => String(pair[0] || '').trim() && String(pair[1] || '').trim())
+          .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+        if (!rows.length) {
+          ipList.innerHTML = '<li>No player IP records available.</li>';
+        } else {
+          ipList.innerHTML = rows.map(pair => `<li>${pair[0]}: ${pair[1]}</li>`).join('');
+        }
+      } else {
+        ipList.innerHTML = '<li>Only owner/admin/mod can view player IPs.</li>';
+      }
+
       if (!ipBans.length) {
         list.innerHTML = '<li>No IP bans active.</li>';
       } else {
@@ -616,7 +647,37 @@
       const next = document.getElementById('nameInput').value.trim();
       const pass = document.getElementById('ownerPassInput').value;
       if (!next) return;
-      if (RGW.switchAccount(next, pass)) location.reload();
+      if (RGW.switchAccount(next, pass)) {
+        location.reload();
+      } else {
+        document.getElementById('authStatus').textContent = RGW.getLastAuthMessage() || 'Sign-in failed';
+      }
+    });
+
+    document.getElementById('emailCreateBtn').addEventListener('click', () => {
+      const email = document.getElementById('emailInput').value.trim();
+      const pass = document.getElementById('emailPassInput').value;
+      const fallbackName = document.getElementById('nameInput').value.trim();
+      const remember = document.getElementById('rememberGoogle').checked;
+      const result = RGW.signInWithEmail(email, pass, fallbackName, true, remember);
+      document.getElementById('authStatus').textContent = result.message || '';
+      if (result.ok) location.reload();
+    });
+
+    document.getElementById('emailSignInBtn').addEventListener('click', () => {
+      const email = document.getElementById('emailInput').value.trim();
+      const pass = document.getElementById('emailPassInput').value;
+      const remember = document.getElementById('rememberGoogle').checked;
+      const result = RGW.signInWithEmail(email, pass, '', false, remember);
+      document.getElementById('authStatus').textContent = result.message || '';
+      if (result.ok) location.reload();
+    });
+
+    document.getElementById('googleSignInBtn').addEventListener('click', () => {
+      const email = document.getElementById('emailInput').value.trim();
+      const result = RGW.signInGoogleStyle(email);
+      document.getElementById('authStatus').textContent = result.message || '';
+      if (result.ok) location.reload();
     });
 
     document.getElementById('logoutBtn').addEventListener('click', () => {

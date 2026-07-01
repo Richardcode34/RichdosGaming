@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voxel Canyon 3D</title>
+  <style>
+    body { margin: 0; font-family: Trebuchet MS, sans-serif; background: #08131e; color: #eaf6ff; overflow: hidden; }
+    #hud { position: fixed; top: 10px; left: 10px; z-index: 5; background: rgba(5, 16, 25, .8); border: 1px solid rgba(170,220,255,.35); border-radius: 10px; padding: 8px 10px; font-weight: 700; }
+    #tip { position: fixed; top: 10px; right: 10px; z-index: 5; background: rgba(7, 23, 34, .8); border: 1px solid rgba(170,220,255,.35); border-radius: 10px; padding: 8px 10px; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="hud">Score: 0 | Speed: 1.0x</div>
+  <div id="tip">A/D or Left/Right to dodge canyon blocks</div>
+  <canvas id="c"></canvas>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const hud = document.getElementById('hud');
+    function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
+    addEventListener('resize', resize); resize();
+
+    let lane = 1;
+    let score = 0;
+    let speed = 1;
+    let alive = true;
+    const lanes = [0.26, 0.5, 0.74];
+    const blocks = [];
+
+    addEventListener('keydown', (e) => {
+      if (e.key === 'a' || e.key === 'ArrowLeft') lane = Math.max(0, lane - 1);
+      if (e.key === 'd' || e.key === 'ArrowRight') lane = Math.min(2, lane + 1);
+      if (!alive && e.key === 'r') location.reload();
+    });
+
+    function spawn() {
+      if (Math.random() < 0.13) blocks.push({ lane: Math.floor(Math.random() * 3), z: 1.2 });
+    }
+
+    function drawTrack() {
+      const w = canvas.width, h = canvas.height;
+      ctx.fillStyle = '#0d2030';
+      ctx.fillRect(0, 0, w, h);
+      const g = ctx.createLinearGradient(0, h * 0.35, 0, h);
+      g.addColorStop(0, '#2d6b42');
+      g.addColorStop(1, '#163221');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.2, h);
+      ctx.lineTo(w * 0.44, h * 0.35);
+      ctx.lineTo(w * 0.56, h * 0.35);
+      ctx.lineTo(w * 0.8, h);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawPlayer() {
+      const w = canvas.width, h = canvas.height;
+      const x = w * lanes[lane];
+      const y = h * 0.82;
+      ctx.fillStyle = '#7fe5ff';
+      ctx.fillRect(x - 24, y - 24, 48, 48);
+      ctx.fillStyle = '#1a3850';
+      ctx.fillRect(x - 18, y - 18, 36, 8);
+      return { x, y };
+    }
+
+    function tick() {
+      if (!alive) return;
+      spawn();
+      drawTrack();
+      const p = drawPlayer();
+
+      for (let i = blocks.length - 1; i >= 0; i -= 1) {
+        const b = blocks[i];
+        b.z -= 0.02 * speed;
+        const scale = Math.max(0.1, 1.6 - b.z);
+        const x = canvas.width * lanes[b.lane];
+        const y = canvas.height * (0.38 + (1.2 - b.z) * 0.5);
+        const size = 20 + scale * 30;
+        ctx.fillStyle = '#8d5f3a';
+        ctx.fillRect(x - size / 2, y - size / 2, size, size);
+        ctx.strokeStyle = '#513420';
+        ctx.strokeRect(x - size / 2, y - size / 2, size, size);
+
+        if (b.z < 0.12) {
+          if (Math.abs(x - p.x) < 36) {
+            alive = false;
+            hud.textContent = 'Crashed! Score: ' + score + ' (Press R to restart)';
+          }
+          blocks.splice(i, 1);
+        }
+      }
+
+      score += 1;
+      speed = 1 + Math.min(2.8, score / 420);
+      if (alive) hud.textContent = 'Score: ' + score + ' | Speed: ' + speed.toFixed(1) + 'x';
+      requestAnimationFrame(tick);
+    }
+    tick();
+  </script>
+</body>
+</html>

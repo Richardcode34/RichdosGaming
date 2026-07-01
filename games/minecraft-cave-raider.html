@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minecraft Cave Raider</title>
+  <style>
+    body { margin: 0; font-family: Trebuchet MS, sans-serif; background: #10181f; color: #ecfff4; }
+    main { width: min(980px, 95vw); margin: 14px auto; }
+    .panel { background: linear-gradient(#1f2f25, #152019); border: 3px solid #2c4635; padding: 12px; }
+    #hud { font-weight: 800; margin: 8px 0; }
+    #grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; }
+    .t { aspect-ratio: 1/1; border: 1px solid #2a3d30; cursor: pointer; }
+    .stone { background: #5f646d; }
+    .ore { background: #70d8ff; }
+    .lava { background: #ff7f4f; }
+    .air { background: #2c3d33; }
+    .player { outline: 3px solid #ffe57c; }
+    button { margin-top: 10px; font-weight: 800; padding: 8px 12px; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="panel">
+      <h1>Minecraft Cave Raider</h1>
+      <p>Mine ores, dodge lava, and clear the cave. Use WASD or arrow keys.</p>
+      <div id="hud">Ores: 0/0 | HP: 5</div>
+      <div id="grid"></div>
+      <button id="newGame">New Cave</button>
+    </section>
+  </main>
+  <script>
+    const W = 12, H = 10;
+    const grid = document.getElementById('grid');
+    const hud = document.getElementById('hud');
+    let map = [], player = { x: 0, y: 0, hp: 5, ores: 0, target: 0 }, over = false;
+
+    function at(x, y) { return y * W + x; }
+    function tile(x, y) { return map[at(x, y)]; }
+
+    function reset() {
+      map = Array(W * H).fill('stone');
+      player = { x: 0, y: 0, hp: 5, ores: 0, target: 0 };
+      over = false;
+      for (let i = 0; i < W * H; i += 1) {
+        const r = Math.random();
+        map[i] = r < 0.13 ? 'ore' : (r < 0.2 ? 'lava' : 'stone');
+      }
+      map[0] = 'air';
+      player.target = map.filter(t => t === 'ore').length;
+      render();
+    }
+
+    function render() {
+      grid.innerHTML = '';
+      for (let y = 0; y < H; y += 1) {
+        for (let x = 0; x < W; x += 1) {
+          const b = document.createElement('button');
+          b.className = 't ' + tile(x, y) + (x === player.x && y === player.y ? ' player' : '');
+          grid.appendChild(b);
+        }
+      }
+      if (!over && player.ores >= player.target) {
+        over = true;
+        hud.textContent = 'Cave cleared! Ores: ' + player.ores + '/' + player.target;
+        return;
+      }
+      hud.textContent = 'Ores: ' + player.ores + '/' + player.target + ' | HP: ' + player.hp;
+    }
+
+    function step(dx, dy) {
+      if (over) return;
+      const nx = player.x + dx, ny = player.y + dy;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H) return;
+      player.x = nx; player.y = ny;
+      const t = tile(nx, ny);
+      if (t === 'ore') { player.ores += 1; map[at(nx, ny)] = 'air'; }
+      if (t === 'stone') map[at(nx, ny)] = 'air';
+      if (t === 'lava') {
+        player.hp -= 1;
+        map[at(nx, ny)] = 'air';
+        if (player.hp <= 0) { over = true; hud.textContent = 'You got burned out. Press New Cave.'; }
+      }
+      render();
+    }
+
+    addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+      if (k === 'a' || e.key === 'ArrowLeft') step(-1, 0);
+      if (k === 'd' || e.key === 'ArrowRight') step(1, 0);
+      if (k === 'w' || e.key === 'ArrowUp') step(0, -1);
+      if (k === 's' || e.key === 'ArrowDown') step(0, 1);
+    });
+    document.getElementById('newGame').addEventListener('click', reset);
+    reset();
+  </script>
+</body>
+</html>

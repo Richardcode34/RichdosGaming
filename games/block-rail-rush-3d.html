@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Block Rail Rush 3D</title>
+  <style>
+    body { margin: 0; background: #090f19; color: #eef9ff; font-family: Trebuchet MS, sans-serif; overflow: hidden; }
+    #hud { position: fixed; left: 10px; top: 10px; background: rgba(8,18,30,.85); border: 1px solid rgba(170,220,255,.3); border-radius: 10px; padding: 8px 10px; font-weight: 700; }
+    #help { position: fixed; right: 10px; top: 10px; background: rgba(8,18,30,.85); border: 1px solid rgba(170,220,255,.3); border-radius: 10px; padding: 8px 10px; }
+    canvas { width: 100vw; height: 100vh; display: block; }
+  </style>
+</head>
+<body>
+  <div id="hud">Distance: 0 | Coins: 0</div>
+  <div id="help">Move: Left/Right, Jump: Space</div>
+  <canvas id="c"></canvas>
+  <script>
+    const c = document.getElementById('c');
+    const x = c.getContext('2d');
+    const hud = document.getElementById('hud');
+    function rs() { c.width = innerWidth; c.height = innerHeight; }
+    addEventListener('resize', rs); rs();
+
+    let lane = 1, yVel = 0, jump = 0, alive = true;
+    let dist = 0, coins = 0;
+    const lanes = [0.3, 0.5, 0.7];
+    const items = [];
+
+    addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft' || e.key === 'a') lane = Math.max(0, lane - 1);
+      if (e.key === 'ArrowRight' || e.key === 'd') lane = Math.min(2, lane + 1);
+      if ((e.key === ' ' || e.key === 'ArrowUp') && jump <= 0) yVel = 12;
+      if (!alive && e.key.toLowerCase() === 'r') location.reload();
+    });
+
+    function sp() {
+      if (Math.random() < 0.16) items.push({ lane: Math.floor(Math.random() * 3), z: 1.2, type: Math.random() < 0.35 ? 'coin' : 'rock' });
+    }
+
+    function draw() {
+      x.fillStyle = '#0d1b2d'; x.fillRect(0, 0, c.width, c.height);
+      x.fillStyle = '#2f5f3d';
+      x.beginPath();
+      x.moveTo(c.width * 0.18, c.height);
+      x.lineTo(c.width * 0.45, c.height * 0.35);
+      x.lineTo(c.width * 0.55, c.height * 0.35);
+      x.lineTo(c.width * 0.82, c.height);
+      x.closePath(); x.fill();
+
+      if (yVel !== 0 || jump > 0) { jump += yVel; yVel -= 0.7; if (jump < 0) { jump = 0; yVel = 0; } }
+      const px = c.width * lanes[lane], py = c.height * 0.82 - jump;
+      x.fillStyle = '#90f0ff'; x.fillRect(px - 20, py - 20, 40, 40);
+
+      for (let i = items.length - 1; i >= 0; i -= 1) {
+        const it = items[i];
+        it.z -= 0.02;
+        const ix = c.width * lanes[it.lane];
+        const iy = c.height * (0.38 + (1.2 - it.z) * 0.5) - jump * 0.15;
+        const s = 16 + (1.6 - it.z) * 24;
+        x.fillStyle = it.type === 'coin' ? '#ffe17e' : '#83593d';
+        x.fillRect(ix - s / 2, iy - s / 2, s, s);
+
+        if (it.z < 0.11) {
+          const hit = Math.abs(ix - px) < 32 && jump < 26;
+          if (it.type === 'coin' && hit) coins += 1;
+          if (it.type === 'rock' && hit) { alive = false; hud.textContent = 'You crashed! Distance: ' + dist + ' | Coins: ' + coins + ' (Press R)'; }
+          items.splice(i, 1);
+        }
+      }
+
+      dist += 1;
+      if (alive) {
+        hud.textContent = 'Distance: ' + dist + ' | Coins: ' + coins;
+        sp();
+        requestAnimationFrame(draw);
+      }
+    }
+    draw();
+  </script>
+</body>
+</html>

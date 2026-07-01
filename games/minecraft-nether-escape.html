@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minecraft Nether Escape</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #220d0b; color: #ffe9cf; font-family: Trebuchet MS, sans-serif; }
+    #hud, #tip { position: fixed; top: 10px; z-index: 6; background: rgba(44,15,12,.82); border: 1px solid rgba(255,181,145,.4); border-radius: 10px; padding: 8px 10px; }
+    #hud { left: 10px; font-weight: 800; }
+    #tip { right: 10px; }
+    canvas { width: 100vw; height: 100vh; display: block; }
+  </style>
+</head>
+<body>
+  <div id="hud">Distance: 0 | Heat: 0</div>
+  <div id="tip">A/D move, Space jump, avoid lava blocks</div>
+  <canvas id="c"></canvas>
+  <script>
+    const c = document.getElementById('c');
+    const g = c.getContext('2d');
+    const hud = document.getElementById('hud');
+    function rs() { c.width = innerWidth; c.height = innerHeight; }
+    addEventListener('resize', rs); rs();
+
+    const p = { x: 120, y: 0, vy: 0, on: false };
+    let dist = 0, heat = 0, live = true;
+    const floors = [];
+    for (let i = 0; i < 220; i += 1) floors.push({ x: i * 90, y: 430 + (Math.random() * 60 - 30), lava: Math.random() < 0.2 });
+    addEventListener('keydown', e => {
+      if (!live && e.key.toLowerCase() === 'r') location.reload();
+      if (e.key === ' ' && p.on) p.vy = -13;
+      if (e.key.toLowerCase() === 'a') p.x -= 25;
+      if (e.key.toLowerCase() === 'd') p.x += 25;
+    });
+
+    function t() {
+      if (!live) return;
+      p.vy += 0.7; p.y += p.vy; p.on = false;
+      dist += 3;
+      const cam = dist - 180;
+
+      g.fillStyle = '#2a0f0d'; g.fillRect(0, 0, c.width, c.height);
+      g.fillStyle = '#6e2318'; g.fillRect(0, c.height * 0.7, c.width, c.height * 0.3);
+
+      for (const f of floors) {
+        const sx = f.x - cam;
+        if (sx < -120 || sx > c.width + 120) continue;
+        g.fillStyle = f.lava ? '#ff6f42' : '#7b5c47';
+        g.fillRect(sx, f.y, 84, 24);
+        if (p.x + 22 > sx && p.x - 22 < sx + 84 && p.y + 26 > f.y && p.y + 26 < f.y + 20 && p.vy >= 0) {
+          p.y = f.y - 26; p.vy = 0; p.on = true;
+          if (f.lava) heat += 1;
+        }
+      }
+
+      if (p.y > c.height + 60 || heat >= 7) {
+        live = false;
+        hud.textContent = 'Game over. Distance: ' + Math.floor(dist / 10) + ' | Heat: ' + heat + ' (Press R)';
+      } else {
+        hud.textContent = 'Distance: ' + Math.floor(dist / 10) + ' | Heat: ' + heat;
+      }
+
+      g.fillStyle = '#ffe0a4';
+      g.fillRect(p.x - 16, p.y - 26, 32, 32);
+      requestAnimationFrame(t);
+    }
+    p.y = 340;
+    t();
+  </script>
+</body>
+</html>

@@ -15,6 +15,7 @@
   const MERCHANT_OVERRIDE_KEY = "rgw_merchant_override_v1";
   const LANG_KEY = "rgw_lang";
   const SITE_UPDATES_KEY = "rgw_site_updates_v1";
+  const GOOGLE_REMEMBER_KEY = "rgw_google_remember_v1";
   const STREAK_FREEZE_COST = 12;
   const TOKEN_LEVEL_STEP = 2;
   const DAILY_SHOP_REROLL_COST = 3;
@@ -578,6 +579,38 @@
     return String(hashText("pw|" + String(raw || "")));
   }
 
+  function sanitizeEmail(raw) {
+    const email = String(raw || "").trim().toLowerCase();
+    if (!email) return "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "";
+    return email;
+  }
+
+  function isGmailEmail(email) {
+    return String(email || "").toLowerCase().endsWith("@gmail.com");
+  }
+
+  function readGoogleRememberMap() {
+    const map = safeJsonParse(localStorage.getItem(GOOGLE_REMEMBER_KEY), {});
+    return map && typeof map === "object" ? map : {};
+  }
+
+  function saveGoogleRememberMap(map) {
+    localStorage.setItem(GOOGLE_REMEMBER_KEY, JSON.stringify(map && typeof map === "object" ? map : {}));
+  }
+
+  function findUsernameByEmail(accounts, email) {
+    const target = sanitizeEmail(email);
+    if (!target) return "";
+    const keys = Object.keys(accounts || {});
+    for (let i = 0; i < keys.length; i += 1) {
+      const name = keys[i];
+      const a = accounts[name];
+      if (sanitizeEmail(a && a.loginEmail) === target) return name;
+    }
+    return "";
+  }
+
   function askName(message) {
     try {
       if (typeof window !== "undefined" && typeof window.prompt === "function") {
@@ -626,6 +659,18 @@
   function ownerPasswordValid(password) {
     return String(password || "") === OWNER_PASSWORD;
   }
+  function applyRoleRankFloor(account) {
+    if (!account) return;
+    const role = String(account.role || "player").toLowerCase();
+    let minPoints = 0;
+    if (role === "helper") minPoints = 120;
+    if (role === "mod") minPoints = 260;
+    if (role === "admin") minPoints = 420;
+    if (role === "owner") minPoints = 620;
+    if ((Number(account.rankPoints) || 0) < minPoints) {
+      account.rankPoints = minPoints;
+    }
+  }
 
   function ensureRole(account) {
     if (!account || !account.username) return account;
@@ -635,6 +680,7 @@
       const current = String(account.role || "player").toLowerCase();
       account.role = (current === "admin" || current === "helper" || current === "mod" || current === "player") ? current : "player";
     }
+    applyRoleRankFloor(account);
     ensureProgression(account);
     return account;
   }
@@ -741,6 +787,8 @@
     if (!account) return;
     account.rankPoints = Math.max(0, Number(account.rankPoints) || 0);
     account.passHash = String(account.passHash || "");
+    account.loginEmail = sanitizeEmail(account.loginEmail || "");
+    account.googleLinked = !!account.googleLinked;
     account.level = Math.max(1, Number(account.level) || 1);
     account.credits = Math.max(0, Number(account.credits) || 0);
     account.tokens = Math.max(0, Number(account.tokens) || 0);
@@ -780,6 +828,8 @@
       username,
       role: isOwnerUser(username) ? "owner" : (isAdminUser(username) ? "admin" : "player"),
       passHash: "",
+      loginEmail: "",
+      googleLinked: false,
       createdAt: nowIso(),
       lastSeen: nowIso(),
       totalPlays: 0,
@@ -1138,6 +1188,108 @@
     return true;
   }
 
+  function signInWithEmail(email, password, displayName, createIfMissing, rememberGoogle) {
+    const normalizedEmail = sanitizeEmail(email);
+    if (!normalizedEmail) return { ok: false, message: "Valid email required" };
+
+    const pass = String(password || "");
+    const accounts = loadAccounts();
+    let username = findUsernameByEmail(accounts, normalizedEmail);
+    const allowCreate = !!createIfMissing;
+    const shouldRememberGoogle = !!rememberGoogle;
+
+    if (!username) {
+      if (!allowCreate) {
+        return { ok: false, message: "No account for this email" };
+      }
+      if (pass.length < 3) {
+        return { ok: false, message: "Password must be at least 3 characters" };
+      }
+
+      const base = sanitizeName(displayName || normalizedEmail.split("@")[0] || "Player") || "Player";
+      let candidate = base;
+      let n = 2;
+      while (accounts[candidate]) {
+        candidate = base + n;
+        n += 1;
+      }
+      username = candidate;
+
+      accounts[username] = createEmptyAccount(username);
+      accounts[username].passHash = passwordHash(pass);
+      accounts[username].loginEmail = normalizedEmail;
+      accounts[username].googleLinked = isGmailEmail(normalizedEmail);
+    } else {
+      ensureProgression(accounts[username]);
+      const stored = String(accounts[username].passHash || "");
+      if (stored) {
+        if (passwordHash(pass) !== stored) {
+          return { ok: false, message: "Wrong password" };
+        }
+      } else {
+        if (pass.length < 3) {
+          return { ok: false, message: "Set a password for this account" };
+        }
+        accounts[username].passHash = passwordHash(pass);
+      }
+      accounts[username].loginEmail = normalizedEmail;
+      if (isGmailEmail(normalizedEmail)) {
+        accounts[username].googleLinked = true;
+      }
+    }
+
+    ensureRole(accounts[username]);
+    saveAccounts(accounts);
+    setCurrentUsername(username);
+    syncAccountToLan(accounts[username]);
+
+    if (shouldRememberGoogle && isGmailEmail(normalizedEmail)) {
+      const remembered = readGoogleRememberMap();
+      remembered[normalizedEmail] = username;
+      saveGoogleRememberMap(remembered);
+    }
+
+    return {
+      ok: true,
+      username: username,
+      message: "Signed in"
+    };
+  }
+
+  function signInGoogleStyle(email) {
+    const normalizedEmail = sanitizeEmail(email);
+    if (!normalizedEmail) return { ok: false, message: "Valid Gmail required" };
+    if (!isGmailEmail(normalizedEmail)) {
+      return { ok: false, message: "Google sign-in requires a Gmail address" };
+    }
+
+    const accounts = loadAccounts();
+    const username = findUsernameByEmail(accounts, normalizedEmail);
+    if (!username) {
+      return { ok: false, message: "No Google-linked account yet. Use email sign in first." };
+    }
+
+    const remembered = readGoogleRememberMap();
+    if (String(remembered[normalizedEmail] || "") !== username) {
+      return { ok: false, message: "Use email + password once and enable remember, then try Google sign-in." };
+    }
+
+    ensureRole(accounts[username]);
+    accounts[username].googleLinked = true;
+    saveAccounts(accounts);
+    setCurrentUsername(username);
+    syncAccountToLan(accounts[username]);
+    return { ok: true, username: username, message: "Signed in with Google" };
+  }
+
+  function getRememberedGoogleAccounts() {
+    const remembered = readGoogleRememberMap();
+    const emails = Object.keys(remembered || {}).filter(function (e) { return isGmailEmail(e); });
+    return emails.map(function (email) {
+      return { email: email, username: String(remembered[email] || "") };
+    });
+  }
+
   function getLastAuthMessage() {
     return String(lastAuthMessage || "");
   }
@@ -1213,6 +1365,9 @@
     account.gameKeys = Math.floor(gameKeys);
     account.level = levelFromPoints(account.rankPoints);
     account.rankName = rankFromPoints(account.rankPoints);
+    applyRoleRankFloor(account);
+    account.rankName = rankFromPoints(account.rankPoints);
+    account.level = Math.max(account.level || 1, levelFromPoints(account.rankPoints));
     ensureRole(account);
     account.lastSeen = nowIso();
     accounts[target] = account;
@@ -2510,7 +2665,7 @@
       '<a href="' + (/\/games\//i.test(location.pathname || "") ? "../account.html" : "account.html") + '">Account</a>' +
       '<a href="' + (/\/games\//i.test(location.pathname || "") ? "../inventory.html" : "inventory.html") + '">Inventory</a>' +
       '<a href="' + (/\/games\//i.test(location.pathname || "") ? "../leaderboard.html" : "leaderboard.html") + '">Leaderboard</a>' +
-      '<button type="button" id="rgwSwitchBtn">Switch</button>';
+      '<button type="button" id="rgwSwitchBtn">Sign In / Switch</button>';
 
     const style = document.createElement("style");
     style.textContent =
@@ -2533,10 +2688,43 @@
     const btn = document.getElementById("rgwSwitchBtn");
     if (btn) {
       btn.addEventListener("click", function () {
-        const next = askName("Enter player name to switch account:");
-        if (!next) return;
-        if (switchAccount(next)) {
+        const id = String((typeof window !== "undefined" && typeof window.prompt === "function" ? window.prompt("Enter username or email:") : "") || "").trim();
+        if (!id) return;
+        if (id.indexOf("@") >= 0) {
+          const email = sanitizeEmail(id);
+          if (!email) {
+            try { window.alert("Enter a valid email address."); } catch {}
+            return;
+          }
+          const useGoogleQuick = isGmailEmail(email) && !!window.confirm("Use Google quick sign-in (no password)? Click Cancel for email+password.");
+          if (useGoogleQuick) {
+            const quick = signInGoogleStyle(email);
+            if (quick.ok) {
+              location.reload();
+            } else {
+              try { window.alert(quick.message || "Google sign-in failed"); } catch {}
+            }
+            return;
+          }
+
+          const pass = String(window.prompt("Enter account password:") || "");
+          if (!pass) return;
+          const createIfMissing = !!window.confirm("Create this email account if it does not exist?");
+          const remember = isGmailEmail(email) ? !!window.confirm("Remember this Gmail on this device for quick Google sign-in?") : false;
+          const auth = signInWithEmail(email, pass, email.split("@")[0], createIfMissing, remember);
+          if (auth.ok) {
+            location.reload();
+          } else {
+            try { window.alert(auth.message || "Sign-in failed"); } catch {}
+          }
+          return;
+        }
+
+        const pass = String(window.prompt("Enter account password:") || "");
+        if (switchAccount(id, pass)) {
           location.reload();
+        } else {
+          try { window.alert(getLastAuthMessage() || "Sign-in failed"); } catch {}
         }
       });
     }
@@ -3295,6 +3483,9 @@
     getCurrentUsername,
     getLastAuthMessage,
     switchAccount,
+    signInWithEmail,
+    signInGoogleStyle,
+    getRememberedGoogleAccounts,
     changeMyPassword,
     signOut,
     isOwnerUser,

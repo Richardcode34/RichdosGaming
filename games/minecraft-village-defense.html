@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minecraft Village Defense</title>
+  <style>
+    body { margin: 0; background: linear-gradient(#8fd1ff 0 45%, #6cac57 45%); color: #f3fff0; font-family: Trebuchet MS, sans-serif; }
+    main { width: min(940px, 95vw); margin: 16px auto; }
+    .box { background: rgba(21, 46, 23, .9); border: 3px solid #1f361b; padding: 12px; }
+    #field { display: grid; grid-template-columns: repeat(14, 1fr); gap: 3px; margin-top: 10px; }
+    .c { aspect-ratio: 1/1; border: 1px solid #21371d; }
+    .path { background: #8f6c4a; }
+    .tower { background: #7fd4ff; }
+    .mob { background: #ff8d7c; }
+    .grass { background: #6aa551; }
+    #hud { font-weight: 800; margin-top: 8px; }
+    button { margin-top: 8px; padding: 8px 10px; font-weight: 800; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="box">
+      <h1>Minecraft Village Defense</h1>
+      <p>Click grass tiles to place water towers. Stop mobs from reaching the village gate.</p>
+      <div id="hud">Wood: 20 | Gate HP: 10 | Wave: 1</div>
+      <div id="field"></div>
+      <button id="restart">Restart Defense</button>
+    </section>
+  </main>
+  <script>
+    const W = 14, H = 8, pathY = 4;
+    const field = document.getElementById('field');
+    const hud = document.getElementById('hud');
+    let cells = [], mobs = [], wood = 20, hp = 10, wave = 1, live = true;
+
+    function id(x, y) { return y * W + x; }
+    function reset() {
+      cells = Array(W * H).fill('grass');
+      mobs = [];
+      wood = 20; hp = 10; wave = 1; live = true;
+      for (let x = 0; x < W; x += 1) cells[id(x, pathY)] = 'path';
+      draw();
+    }
+
+    function draw() {
+      field.innerHTML = '';
+      for (let y = 0; y < H; y += 1) {
+        for (let x = 0; x < W; x += 1) {
+          const b = document.createElement('button');
+          const mob = mobs.find(m => m.x === x && m.y === y);
+          b.className = 'c ' + (mob ? 'mob' : cells[id(x, y)]);
+          b.addEventListener('click', () => {
+            if (!live) return;
+            const i = id(x, y);
+            if (cells[i] !== 'grass' || wood < 4) return;
+            cells[i] = 'tower';
+            wood -= 4;
+            draw();
+          });
+          field.appendChild(b);
+        }
+      }
+      hud.textContent = 'Wood: ' + wood + ' | Gate HP: ' + hp + ' | Wave: ' + wave;
+      if (!live) hud.textContent += ' | Defeat';
+    }
+
+    function tick() {
+      if (!live) return;
+      if (Math.random() < 0.55) mobs.push({ x: W - 1, y: pathY, hp: 2 + Math.floor(wave / 3) });
+      for (const m of mobs) {
+        const left = id(Math.max(0, m.x - 1), m.y);
+        if (cells[left] === 'tower') {
+          m.hp -= 2;
+          if (Math.random() < 0.45) wood += 1;
+        } else {
+          m.x -= 1;
+        }
+        if (m.x <= 0) { hp -= 1; m.hp = 0; }
+      }
+      mobs = mobs.filter(m => m.hp > 0 && m.x > 0);
+      wave += 1;
+      if (hp <= 0) live = false;
+      draw();
+    }
+
+    setInterval(tick, 1300);
+    document.getElementById('restart').addEventListener('click', reset);
+    reset();
+  </script>
+</body>
+</html>

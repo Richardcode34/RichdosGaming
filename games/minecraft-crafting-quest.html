@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minecraft Crafting Quest</title>
+  <style>
+    body { margin: 0; font-family: Trebuchet MS, sans-serif; background: linear-gradient(#85ccff 0 40%, #72b55f 40%); color: #efffed; }
+    main { width: min(820px, 94vw); margin: 16px auto; }
+    .box { background: rgba(24,49,26,.9); border: 3px solid #203a1a; padding: 12px; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    button { padding: 9px 12px; font-weight: 800; border: 2px solid #1d3218; cursor: pointer; background: #d3ef8d; }
+    #inv li { margin: 4px 0; }
+    #hud { font-weight: 800; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="box">
+      <h1>Minecraft Crafting Quest</h1>
+      <p>Gather resources and craft all four quest items: Torch, Iron Sword, Shield, and Portal Key.</p>
+      <div id="hud">Wood: 0 | Stone: 0 | Iron: 0 | Crystal: 0</div>
+      <div class="row">
+        <button id="woodBtn">Chop Wood</button>
+        <button id="stoneBtn">Mine Stone</button>
+        <button id="ironBtn">Mine Iron</button>
+        <button id="crystalBtn">Find Crystal</button>
+      </div>
+      <div class="row">
+        <button id="torchBtn">Craft Torch (2 wood + 1 stone)</button>
+        <button id="swordBtn">Craft Iron Sword (2 wood + 3 iron)</button>
+        <button id="shieldBtn">Craft Shield (3 wood + 2 iron + 1 stone)</button>
+        <button id="keyBtn">Craft Portal Key (2 crystal + 3 iron)</button>
+      </div>
+      <h2>Crafted Items</h2>
+      <ul id="inv"></ul>
+      <div id="msg"></div>
+    </section>
+  </main>
+  <script>
+    const res = { wood: 0, stone: 0, iron: 0, crystal: 0 };
+    const crafted = new Set();
+    const hud = document.getElementById('hud');
+    const inv = document.getElementById('inv');
+    const msg = document.getElementById('msg');
+
+    function draw() {
+      hud.textContent = 'Wood: ' + res.wood + ' | Stone: ' + res.stone + ' | Iron: ' + res.iron + ' | Crystal: ' + res.crystal;
+      inv.innerHTML = [...crafted].map(x => '<li>' + x + '</li>').join('') || '<li>Nothing crafted yet.</li>';
+      if (crafted.size === 4) msg.textContent = 'Quest complete! You crafted the full survival set.';
+    }
+
+    function add(k, n) { res[k] += n; draw(); }
+    function make(name, cost) {
+      if (crafted.has(name)) return;
+      for (const k of Object.keys(cost)) if (res[k] < cost[k]) { msg.textContent = 'Need more ' + k + ' for ' + name + '.'; return; }
+      for (const k of Object.keys(cost)) res[k] -= cost[k];
+      crafted.add(name);
+      msg.textContent = name + ' crafted.';
+      draw();
+    }
+
+    document.getElementById('woodBtn').onclick = () => add('wood', 1 + Math.floor(Math.random() * 2));
+    document.getElementById('stoneBtn').onclick = () => add('stone', 1 + Math.floor(Math.random() * 2));
+    document.getElementById('ironBtn').onclick = () => add('iron', Math.random() < 0.5 ? 1 : 2);
+    document.getElementById('crystalBtn').onclick = () => add('crystal', Math.random() < 0.35 ? 1 : 0);
+
+    document.getElementById('torchBtn').onclick = () => make('Torch', { wood: 2, stone: 1 });
+    document.getElementById('swordBtn').onclick = () => make('Iron Sword', { wood: 2, iron: 3 });
+    document.getElementById('shieldBtn').onclick = () => make('Shield', { wood: 3, iron: 2, stone: 1 });
+    document.getElementById('keyBtn').onclick = () => make('Portal Key', { crystal: 2, iron: 3 });
+    draw();
+  </script>
+</body>
+</html>

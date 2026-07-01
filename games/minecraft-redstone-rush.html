@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minecraft Redstone Rush</title>
+  <style>
+    body { margin: 0; font-family: Trebuchet MS, sans-serif; background: linear-gradient(#7ecbff 0 42%, #6fb05f 42%); color: #f7fff2; }
+    main { width: min(920px, 94vw); margin: 18px auto; }
+    .panel { background: rgba(22,47,24,.86); border: 3px solid #1f3519; padding: 12px; box-shadow: 0 6px 0 rgba(23,40,18,.7); }
+    #grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-top: 12px; }
+    .cell { aspect-ratio: 1/1; border: 2px solid #1d2c15; background: linear-gradient(#8ec86a, #5d8f3f); cursor: pointer; }
+    .on { background: linear-gradient(#ffb0a5, #da4f46); }
+    .goal { outline: 3px solid #ffe77a; }
+    .bar { margin-top: 10px; font-weight: 800; }
+    button { margin-top: 10px; padding: 8px 12px; font-weight: 800; border: 2px solid #243a1c; background: #d8f18a; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="panel">
+      <h1>Minecraft Redstone Rush</h1>
+      <p>Turn on every gold-marked block before time runs out. Clicking toggles a cross pattern like redstone power spread.</p>
+      <div class="bar" id="hud">Targets: 0/10 | Time: 60</div>
+      <div id="grid"></div>
+      <button id="reset">New Circuit</button>
+    </section>
+  </main>
+  <script>
+    const size = 8, totalTargets = 10;
+    const grid = document.getElementById('grid');
+    const hud = document.getElementById('hud');
+    let cells = [], targets = new Set(), litTargets = 0, time = 60, ended = false;
+
+    function idx(x, y) { return y * size + x; }
+    function flip(x, y) { if (x >= 0 && y >= 0 && x < size && y < size) cells[idx(x, y)] = !cells[idx(x, y)]; }
+
+    function build() {
+      cells = Array(size * size).fill(false);
+      targets = new Set();
+      litTargets = 0;
+      ended = false;
+      while (targets.size < totalTargets) targets.add(Math.floor(Math.random() * size * size));
+      grid.innerHTML = '';
+      for (let i = 0; i < size * size; i += 1) {
+        const b = document.createElement('button');
+        b.className = 'cell' + (targets.has(i) ? ' goal' : '');
+        b.addEventListener('click', () => {
+          if (ended) return;
+          const x = i % size, y = Math.floor(i / size);
+          flip(x, y); flip(x - 1, y); flip(x + 1, y); flip(x, y - 1); flip(x, y + 1);
+          render();
+        });
+        grid.appendChild(b);
+      }
+      render();
+    }
+
+    function render() {
+      litTargets = 0;
+      [...grid.children].forEach((el, i) => {
+        el.classList.toggle('on', cells[i]);
+        if (targets.has(i) && cells[i]) litTargets += 1;
+      });
+      hud.textContent = 'Targets: ' + litTargets + '/' + totalTargets + ' | Time: ' + time;
+      if (litTargets >= totalTargets && !ended) {
+        ended = true;
+        hud.textContent = 'Circuit online! You win with ' + time + 's left.';
+      }
+    }
+
+    setInterval(() => {
+      if (ended) return;
+      time -= 1;
+      if (time <= 0) {
+        ended = true;
+        hud.textContent = 'Time up. Try a new circuit.';
+      } else {
+        render();
+      }
+    }, 1000);
+
+    document.getElementById('reset').addEventListener('click', () => { time = 60; build(); });
+    build();
+  </script>
+</body>
+</html>

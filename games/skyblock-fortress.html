@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skyblock Fortress</title>
+  <style>
+    body { margin: 0; font-family: Trebuchet MS, sans-serif; color: #f3fff0; background: linear-gradient(#87cfff 0 48%, #5d9f4d 48%); }
+    main { width: min(980px, 95vw); margin: 16px auto; }
+    .wrap { background: rgba(19,44,22,.86); border: 3px solid #1d3418; padding: 12px; box-shadow: 0 8px 0 rgba(20,34,16,.7); }
+    #world { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; margin-top: 10px; }
+    .t { aspect-ratio: 1/1; border: 2px solid #1b2e15; background: #6d6d6d; cursor: pointer; }
+    .grass { background: linear-gradient(#9fe577, #5f943f); }
+    .wood { background: linear-gradient(#b28354, #7a5535); }
+    .wall { background: linear-gradient(#a3c7ff, #6f9ad9); }
+    .enemy { background: linear-gradient(#ff8e7b, #c4493f); }
+    .bar { margin-top: 10px; font-weight: 800; }
+    button, select { margin-top: 10px; padding: 8px 10px; font-weight: 800; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="wrap">
+      <h1>Skyblock Fortress</h1>
+      <p>Collect wood and place wall blocks to stop mobs crossing your island. Style inspired by block survival games.</p>
+      <label>Place block: <select id="tool"><option value="grass">Grass</option><option value="wood">Wood</option><option value="wall">Wall</option></select></label>
+      <div class="bar" id="hud">Wood: 8 | Walls built: 0 | Waves survived: 0</div>
+      <div id="world"></div>
+      <button id="restart">Restart Island</button>
+    </section>
+  </main>
+  <script>
+    const cols = 12, rows = 10;
+    const world = document.getElementById('world');
+    const hud = document.getElementById('hud');
+    const tool = document.getElementById('tool');
+    let map = [], wood = 8, walls = 0, waves = 0, mobs = [], running = true;
+
+    function at(x, y) { return y * cols + x; }
+    function reset() {
+      map = Array(cols * rows).fill('grass');
+      wood = 8; walls = 0; waves = 0; mobs = []; running = true;
+      for (let y = 0; y < rows; y += 1) map[at(0, y)] = 'stone';
+      render();
+    }
+
+    function render() {
+      world.innerHTML = '';
+      for (let y = 0; y < rows; y += 1) {
+        for (let x = 0; x < cols; x += 1) {
+          const i = at(x, y);
+          const b = document.createElement('button');
+          const mob = mobs.find(m => m.x === x && m.y === y);
+          b.className = 't ' + (mob ? 'enemy' : map[i]);
+          b.addEventListener('click', () => {
+            if (!running || x === 0) return;
+            const chosen = tool.value;
+            if (chosen === 'wood' && wood <= 0) return;
+            if (chosen === 'wall' && wood < 2) return;
+            map[i] = chosen;
+            if (chosen === 'wood') wood -= 1;
+            if (chosen === 'wall') { wood -= 2; walls += 1; }
+            render();
+          });
+          world.appendChild(b);
+        }
+      }
+      hud.textContent = 'Wood: ' + wood + ' | Walls built: ' + walls + ' | Waves survived: ' + waves;
+    }
+
+    function wave() {
+      if (!running) return;
+      waves += 1;
+      mobs.push({ x: cols - 1, y: Math.floor(Math.random() * rows) });
+      for (const m of mobs) {
+        const next = at(Math.max(0, m.x - 1), m.y);
+        if (map[next] === 'wall') {
+          map[next] = 'grass';
+          m.dead = true;
+          wood += 2;
+          continue;
+        }
+        m.x -= 1;
+        if (m.x <= 0) {
+          running = false;
+          hud.textContent = 'Fortress breached at wave ' + waves + '. Press Restart Island.';
+        }
+      }
+      mobs = mobs.filter(m => !m.dead && m.x >= 0);
+      render();
+    }
+
+    setInterval(wave, 1800);
+    document.getElementById('restart').addEventListener('click', reset);
+    reset();
+  </script>
+</body>
+</html>
