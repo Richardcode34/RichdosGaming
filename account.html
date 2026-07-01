@@ -53,7 +53,18 @@
         <button id="emailSignInBtn" class="btn" type="button">Sign In with Email</button>
         <button id="googleSignInBtn" class="btn" type="button">Google Sign In</button>
       </div>
+      <div class="glass-strip">
+        <span class="pill">Link Current Account</span>
+        <input id="linkEmailInput" class="input" type="email" placeholder="Link this account to email" maxlength="120" />
+        <input id="linkPassInput" class="input" type="password" placeholder="Current account password" maxlength="80" />
+        <label class="pill" for="linkRememberGoogle" style="display:inline-flex;gap:6px;align-items:center">
+          <input id="linkRememberGoogle" type="checkbox" /> Remember Gmail quick sign-in
+        </label>
+        <button id="linkEmailBtn" class="btn" type="button">Link Email</button>
+        <button id="unlinkEmailBtn" class="btn" type="button">Unlink Email</button>
+      </div>
       <p id="authStatus" class="status-line"></p>
+      <p id="linkedAuthState" class="status-line"></p>
       <p><a id="linkHome" href="index.html">Home</a> | <a id="linkShop" href="shop.html">Shop</a> | <a id="linkStreak" href="streak.html">🔥 Streak</a> | <a id="linkBoard" href="leaderboard.html">Open Leaderboard</a></p>
       <ul id="topGames" class="inline-list"></ul>
     </section>
@@ -198,6 +209,12 @@
           <div class="glass-strip">
             <input id="ownerQuickUnbanIp" class="input" type="text" maxlength="64" placeholder="IP to unban" />
             <button id="ownerQuickUnbanBtn" class="btn" type="button">Quick Unban</button>
+          </div>
+          <h3>Owner Email Link Tool</h3>
+          <div class="glass-strip">
+            <input id="ownerLinkEmail" class="input" type="email" maxlength="120" placeholder="Link target username to email" />
+            <input id="ownerLinkTargetPass" class="input" type="password" maxlength="80" placeholder="Set/reset target account password" />
+            <button id="ownerLinkEmailBtn" class="btn" type="button">Link Target Email</button>
           </div>
           <h3>System Snapshot</h3>
           <ul id="ownerSystemList" class="member-list"></ul>
@@ -521,6 +538,20 @@
       if (board) board.textContent = t('board');
     }
 
+    function renderLinkedAuthState() {
+      const state = RGW.getLinkedAuthState();
+      const el = document.getElementById('linkedAuthState');
+      if (!el) return;
+      if (!state) {
+        el.textContent = 'Linked auth: not available';
+        return;
+      }
+      const mail = state.email ? state.email : 'not linked';
+      const google = state.googleLinked ? 'yes' : 'no';
+      const pw = state.hasPassword ? 'set' : 'not set';
+      el.textContent = `Linked auth -> email: ${mail} | google linked: ${google} | password: ${pw}`;
+    }
+
     function renderOwnerControlCenter() {
       const me = RGW.getCurrentUsername();
       if (!RGW.isOwnerUser(me)) return;
@@ -632,6 +663,7 @@
       renderShop(user || null);
       renderQuests(user || null);
       renderFriends();
+      renderLinkedAuthState();
       renderOwnerControlCenter();
       await renderModeration();
     }
@@ -671,6 +703,22 @@
       const result = RGW.signInGoogleStyle(email);
       document.getElementById('authStatus').textContent = result.message || '';
       if (result.ok) location.reload();
+    });
+
+    document.getElementById('linkEmailBtn').addEventListener('click', () => {
+      const email = document.getElementById('linkEmailInput').value.trim();
+      const pass = document.getElementById('linkPassInput').value;
+      const remember = document.getElementById('linkRememberGoogle').checked;
+      const result = RGW.linkEmailToCurrentAccount(email, pass, remember);
+      document.getElementById('authStatus').textContent = result.message || '';
+      renderLinkedAuthState();
+    });
+
+    document.getElementById('unlinkEmailBtn').addEventListener('click', () => {
+      const pass = document.getElementById('linkPassInput').value;
+      const result = RGW.unlinkEmailFromCurrentAccount(pass);
+      document.getElementById('authStatus').textContent = result.message || '';
+      renderLinkedAuthState();
     });
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -906,6 +954,18 @@
       if (result.ok) {
         await renderModeration();
         renderOwnerControlCenter();
+      }
+    });
+
+    document.getElementById('ownerLinkEmailBtn').addEventListener('click', () => {
+      const target = document.getElementById('ownerTargetUser').value.trim();
+      const email = document.getElementById('ownerLinkEmail').value.trim();
+      const targetPass = document.getElementById('ownerLinkTargetPass').value;
+      const ownerPass = document.getElementById('ownerSetPass').value;
+      const result = RGW.ownerLinkAccountEmail(target, email, targetPass, ownerPass);
+      document.getElementById('ownerStatus').textContent = result.message || '';
+      if (result.ok) {
+        renderLinkedAuthState();
       }
     });
 

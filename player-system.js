@@ -1293,6 +1293,110 @@
     });
   }
 
+  function linkEmailToCurrentAccount(email, password, rememberGoogle) {
+    const username = getCurrentUsername();
+    if (!username) return { ok: false, message: "No active account" };
+
+    const normalizedEmail = sanitizeEmail(email);
+    if (!normalizedEmail) return { ok: false, message: "Valid email required" };
+
+    const accounts = loadAccounts();
+    if (!accounts[username]) accounts[username] = createEmptyAccount(username);
+    const account = accounts[username];
+    ensureProgression(account);
+
+    const existingUser = findUsernameByEmail(accounts, normalizedEmail);
+    if (existingUser && String(existingUser).toLowerCase() !== String(username).toLowerCase()) {
+      return { ok: false, message: "Email already linked to another account" };
+    }
+
+    const pass = String(password || "");
+    const stored = String(account.passHash || "");
+    if (stored) {
+      if (passwordHash(pass) !== stored) {
+        return { ok: false, message: "Current account password is wrong" };
+      }
+    } else {
+      if (pass.length < 3) return { ok: false, message: "Set a password (min 3 chars) before linking" };
+      account.passHash = passwordHash(pass);
+    }
+
+    account.loginEmail = normalizedEmail;
+    account.googleLinked = isGmailEmail(normalizedEmail);
+    accounts[username] = account;
+    saveAccounts(accounts);
+
+    if (rememberGoogle && isGmailEmail(normalizedEmail)) {
+      const remembered = readGoogleRememberMap();
+      remembered[normalizedEmail] = username;
+      saveGoogleRememberMap(remembered);
+    }
+
+    return {
+      ok: true,
+      message: account.googleLinked ? "Email linked (Google quick sign-in enabled)" : "Email linked",
+      state: {
+        username: username,
+        email: account.loginEmail,
+        googleLinked: !!account.googleLinked,
+        hasPassword: !!account.passHash
+      }
+    };
+  }
+
+  function unlinkEmailFromCurrentAccount(password) {
+    const username = getCurrentUsername();
+    if (!username) return { ok: false, message: "No active account" };
+
+    const accounts = loadAccounts();
+    if (!accounts[username]) accounts[username] = createEmptyAccount(username);
+    const account = accounts[username];
+    ensureProgression(account);
+
+    const stored = String(account.passHash || "");
+    if (stored && passwordHash(String(password || "")) !== stored) {
+      return { ok: false, message: "Current account password is wrong" };
+    }
+
+    const oldEmail = sanitizeEmail(account.loginEmail || "");
+    account.loginEmail = "";
+    account.googleLinked = false;
+    accounts[username] = account;
+    saveAccounts(accounts);
+
+    if (oldEmail) {
+      const remembered = readGoogleRememberMap();
+      if (String(remembered[oldEmail] || "").toLowerCase() === String(username).toLowerCase()) {
+        delete remembered[oldEmail];
+        saveGoogleRememberMap(remembered);
+      }
+    }
+
+    return {
+      ok: true,
+      message: "Email unlinked",
+      state: {
+        username: username,
+        email: "",
+        googleLinked: false,
+        hasPassword: !!account.passHash
+      }
+    };
+  }
+
+  function getLinkedAuthState(username) {
+    const name = sanitizeName(username || getCurrentUsername());
+    if (!name) return null;
+    const account = getAccount(name);
+    if (!account) return null;
+    return {
+      username: name,
+      email: sanitizeEmail(account.loginEmail || ""),
+      googleLinked: !!account.googleLinked,
+      hasPassword: !!String(account.passHash || "")
+    };
+  }
+
   function getLastAuthMessage() {
     return String(lastAuthMessage || "");
   }
@@ -1334,6 +1438,45 @@
     }
     ensureRole(accounts[name]);
     return accounts[name];
+  }
+
+  function ownerLinkAccountEmail(targetUsername, email, targetPassword, ownerPassword) {
+    const current = getCurrentUsername();
+    if (!isOwnerUser(current)) return { ok: false, message: "Owner only" };
+    if (!ownerPasswordValid(ownerPassword)) return { ok: false, message: "Invalid owner password" };
+
+    const target = sanitizeName(targetUsername || "");
+    if (!target) return { ok: false, message: "Target username required" };
+
+    const normalizedEmail = sanitizeEmail(email);
+    if (!normalizedEmail) return { ok: false, message: "Valid email required" };
+
+    const accounts = loadAccounts();
+    const existing = findUsernameByEmail(accounts, normalizedEmail);
+    if (existing && String(existing).toLowerCase() !== String(target).toLowerCase()) {
+      return { ok: false, message: "Email already linked to another account" };
+    }
+
+    if (!accounts[target]) accounts[target] = createEmptyAccount(target);
+    const account = accounts[target];
+    ensureProgression(account);
+
+    const nextTargetPassword = String(targetPassword || "");
+    if (!account.passHash) {
+      if (nextTargetPassword.length < 3) {
+        return { ok: false, message: "Set target account password (min 3 chars)" };
+      }
+      account.passHash = passwordHash(nextTargetPassword);
+    } else if (nextTargetPassword.length >= 3) {
+      account.passHash = passwordHash(nextTargetPassword);
+    }
+
+    account.loginEmail = normalizedEmail;
+    account.googleLinked = isGmailEmail(normalizedEmail);
+    accounts[target] = account;
+    saveAccounts(accounts);
+    syncAccountToLan(account);
+    return { ok: true, message: "Email linked to " + target };
   }
 
   function ownerSetPointsCredits(targetUsername, rankPointsValue, creditsValue, tokensValue, gameKeysValue, password) {
@@ -3487,6 +3630,9 @@
     signInWithEmail,
     signInGoogleStyle,
     getRememberedGoogleAccounts,
+    linkEmailToCurrentAccount,
+    unlinkEmailFromCurrentAccount,
+    getLinkedAuthState,
     changeMyPassword,
     signOut,
     isOwnerUser,
@@ -3531,6 +3677,7 @@
     getStreakHistory,
     claimQuest,
     ownerSetPointsCredits,
+    ownerLinkAccountEmail,
     ownerSetRole,
     ownerResetPlayer,
     ownerResetLeaderboard,
